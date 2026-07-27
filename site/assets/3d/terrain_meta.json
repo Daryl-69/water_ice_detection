@@ -1,35 +1,81 @@
 {
-  "dem_min_m": -2749.11083984375,
-  "dem_max_m": 570.0083618164062,
-  "dem_range_m": 3319.119140625,
-  "grid_size": 1024,
-  "pixel_size_m": 298.7548828125,
+  "dem_min_m": -2761.884033203125,
+  "dem_max_m": 575.8192138671875,
+  "dem_range_m": 3337.7032470703125,
+  "grid_size": 2048,
+  "pixel_size_m": 149.4,
   "total_width_km": 319.9,
   "total_height_km": 305.9,
   "craters": [
     {
+      "name": "Shackleton",
+      "px": 1085,
+      "py": 665,
+      "radius_km": 11,
+      "depth_km": 4.2
+    },
+    {
       "name": "Faustini",
-      "px": 706,
-      "py": 563,
-      "radius": 81
+      "px": 1413,
+      "py": 1136,
+      "radius_km": 39,
+      "depth_km": 2.5
     },
     {
       "name": "Shoemaker",
-      "px": 563,
-      "py": 665,
-      "radius": 102
+      "px": 1136,
+      "py": 1341,
+      "radius_km": 51,
+      "depth_km": 2.0
     },
     {
       "name": "Haworth",
-      "px": 430,
-      "py": 512,
-      "radius": 71
+      "px": 870,
+      "py": 1034,
+      "radius_km": 28,
+      "depth_km": 2.8
     },
     {
-      "name": "Shackleton",
-      "px": 542,
-      "py": 327,
-      "radius": 30
+      "name": "Cabeus",
+      "px": 573,
+      "py": 1003,
+      "radius_km": 52,
+      "depth_km": 1.5
+    },
+    {
+      "name": "de Gerlache",
+      "px": 901,
+      "py": 778,
+      "radius_km": 16,
+      "depth_km": 3.0
+    },
+    {
+      "name": "Sverdrup",
+      "px": 778,
+      "py": 1228,
+      "radius_km": 33,
+      "depth_km": 2.2
+    },
+    {
+      "name": "Amundsen",
+      "px": 1474,
+      "py": 860,
+      "radius_km": 53,
+      "depth_km": 1.8
+    },
+    {
+      "name": "Scott",
+      "px": 1454,
+      "py": 593,
+      "radius_km": 53,
+      "depth_km": 2.0
+    },
+    {
+      "name": "Nobile",
+      "px": 819,
+      "py": 1392,
+      "radius_km": 37,
+      "depth_km": 1.9
     }
   ]
 }

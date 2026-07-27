@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lunar South Pole — 3D Globe View</title>
+    <title>Lunar South Pole — 3D Ice Map</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -11,110 +11,117 @@
         canvas{display:block;width:100vw;height:100vh;cursor:grab}
         canvas:active{cursor:grabbing}
 
-        /* Loading */
         .loader{position:fixed;inset:0;background:#020208;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity 1.2s}
         .loader.done{opacity:0;pointer-events:none}
-        .loader .ring{width:50px;height:50px;border:3px solid rgba(0,212,255,.1);border-top-color:#00d4ff;border-radius:50%;animation:sp .8s linear infinite}
+        .loader .ring{width:50px;height:50px;border:3px solid rgba(0,180,255,.1);border-top-color:#00b4ff;border-radius:50%;animation:sp .8s linear infinite}
         .loader p{margin-top:14px;font-size:12px;color:#4a4e6a}
-        .loader .pct{font-family:'JetBrains Mono',monospace;color:#00d4ff;font-size:22px;margin-top:6px}
+        .loader .pct{font-family:'JetBrains Mono',monospace;color:#00b4ff;font-size:22px;margin-top:6px}
         @keyframes sp{to{transform:rotate(360deg)}}
 
-        /* HUD panels */
-        .p{position:fixed;z-index:100;background:rgba(6,6,15,.9);border:1px solid rgba(255,255,255,.05);border-radius:10px;backdrop-filter:blur(16px)}
+        .p{position:fixed;z-index:100;background:rgba(4,4,12,.92);border:1px solid rgba(255,255,255,.04);border-radius:10px;backdrop-filter:blur(20px)}
 
-        /* Title */
-        .p-title{top:16px;left:18px;padding:12px 18px}
-        .p-title h1{font-size:17px;font-weight:800;letter-spacing:-.02em;background:linear-gradient(135deg,#ddd,#00d4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-        .p-title .s{font-size:10px;color:#4a4e6a;margin-top:3px}
+        .p-title{top:16px;left:18px;padding:14px 20px}
+        .p-title h1{font-size:18px;font-weight:800;letter-spacing:-.02em;color:#e8eaf0}
+        .p-title .sub{font-size:10px;color:#4a4e6a;margin-top:3px;line-height:1.4}
 
-        /* Controls */
         .p-ctrl{top:16px;right:18px;padding:8px;display:flex;flex-direction:column;gap:4px}
-        .btn{padding:7px 14px;border-radius:6px;border:1px solid rgba(255,255,255,.04);background:0;color:#6a6e88;font:500 11px/1 'Inter',sans-serif;cursor:pointer;transition:.15s;text-align:left}
+        .btn{padding:7px 14px;border-radius:6px;border:1px solid rgba(255,255,255,.04);background:0;color:#6a6e88;font:500 11px/1.3 'Inter',sans-serif;cursor:pointer;transition:.15s;text-align:left}
         .btn:hover{background:rgba(255,255,255,.03);color:#b0b4c8}
-        .btn.on{border-color:rgba(0,212,255,.3);color:#00d4ff;background:rgba(0,212,255,.06)}
+        .btn.on{border-color:rgba(0,180,255,.3);color:#00b4ff;background:rgba(0,180,255,.06)}
 
-        /* Info */
-        .p-info{bottom:16px;left:18px;padding:12px 16px;min-width:210px}
+        .p-info{bottom:16px;left:18px;padding:12px 16px;min-width:220px}
         .ir{display:flex;justify-content:space-between;padding:2.5px 0;font-size:11px}
         .ir .l{color:#4a4e6a}.ir .v{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500}
 
-        /* Pixel popup */
-        .p-px{bottom:16px;right:18px;padding:16px 20px;min-width:250px;max-width:290px;transform:translateY(12px);opacity:0;transition:.25s ease;pointer-events:none}
+        .p-px{bottom:16px;right:18px;padding:16px 20px;min-width:260px;max-width:300px;transform:translateY(12px);opacity:0;transition:.3s ease;pointer-events:none}
         .p-px.show{transform:translateY(0);opacity:1;pointer-events:auto}
-        .px-hd{font-size:9px;font-weight:700;color:#4a4e6a;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+        .px-hd{font-size:9px;font-weight:700;color:#4a4e6a;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
         .px-r{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;border-bottom:1px solid rgba(255,255,255,.025)}
         .px-r:last-child{border:0}.px-r .l{color:#6a6e88}.px-r .v{font-family:'JetBrains Mono',monospace;font-weight:500}
         .bar{height:4px;border-radius:2px;background:rgba(255,255,255,.05);margin-top:5px;overflow:hidden}
         .bar-f{height:100%;border-radius:2px;transition:width .4s}
-        .bg{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600}
-        .bg-ice{background:rgba(0,212,255,.15);color:#00d4ff}
+        .bg{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;display:inline-block}
+        .bg-ice{background:rgba(0,180,255,.15);color:#00b4ff}
         .bg-no{background:rgba(255,255,255,.04);color:#555}
         .bg-psr{background:rgba(26,95,180,.18);color:#4a9eff}
         .bg-sun{background:rgba(243,156,18,.13);color:#f39c12}
         .bg-ok{background:rgba(39,174,96,.13);color:#27ae60}
         .bg-w{background:rgba(243,156,18,.13);color:#f39c12}
         .bg-d{background:rgba(231,76,60,.13);color:#e74c3c}
-        .px-x{position:absolute;top:8px;right:10px;background:0;border:0;color:#555;cursor:pointer;font-size:14px}
+        .px-x{background:0;border:0;color:#555;cursor:pointer;font-size:14px;padding:0}
 
-        /* Legend */
-        .p-legend{bottom:16px;left:50%;transform:translateX(-50%);padding:8px 16px;display:flex;gap:16px;align-items:center}
-        .leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:#6a6e88}
-        .leg-dot{width:8px;height:8px;border-radius:50%}
+        .p-legend{bottom:16px;left:50%;transform:translateX(-50%);padding:10px 20px;display:flex;gap:20px;align-items:center}
+        .leg-item{display:flex;align-items:center;gap:6px;font-size:10px;color:#7a7e98}
+        .leg-swatch{width:24px;height:8px;border-radius:2px}
+        .leg-grad{background:linear-gradient(90deg,#001133,#0044aa,#0088ee,#44bbff)}
 
-        /* Back link */
         .p-back{top:16px;left:50%;transform:translateX(-50%)}
         .p-back a{display:block;padding:8px 20px;color:#6a6e88;text-decoration:none;font-size:11px;font-weight:500;transition:.15s}
-        .p-back a:hover{color:#00d4ff}
+        .p-back a:hover{color:#00b4ff}
 
-        /* Crater labels */
         .clbl{position:absolute;pointer-events:none;z-index:40;transform:translate(-50%,-50%);text-align:center;transition:opacity .3s}
-        .clbl-name{font-size:10px;font-weight:700;color:rgba(255,255,255,.75);text-shadow:0 1px 8px rgba(0,0,0,.9);letter-spacing:.08em;text-transform:uppercase}
-        .clbl-info{font-size:8px;color:rgba(0,212,255,.6);font-family:'JetBrains Mono',monospace;margin-top:1px}
-        .clbl-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(0,212,255,.2);pointer-events:none}
+        .clbl-name{font-size:10px;font-weight:700;color:rgba(255,255,255,.8);text-shadow:0 1px 8px rgba(0,0,0,.95),0 0 20px rgba(0,0,0,.7);letter-spacing:.07em;text-transform:uppercase}
+        .clbl-sub{font-size:8px;color:rgba(200,210,230,.45);font-family:'JetBrains Mono',monospace;margin-top:1px}
 
-        /* Pin */
+        .deg-lbl{position:absolute;pointer-events:none;z-index:30;font-size:9px;font-weight:600;color:rgba(100,140,200,.5);font-family:'JetBrains Mono',monospace;transform:translate(-50%,-50%);text-shadow:0 0 6px rgba(0,0,0,.8)}
+
         .pin{position:absolute;pointer-events:none;z-index:50;transform:translate(-50%,-100%);opacity:0;transition:opacity .2s}
-        .pin-d{width:10px;height:10px;border-radius:50%;background:#00d4ff;box-shadow:0 0 12px rgba(0,212,255,.5);margin:0 auto}
-        .pin-l{width:2px;height:16px;background:linear-gradient(to bottom,#00d4ff,transparent);margin:0 auto}
+        .pin-d{width:10px;height:10px;border-radius:50%;background:#00b4ff;box-shadow:0 0 12px rgba(0,180,255,.5);margin:0 auto}
+        .pin-l{width:2px;height:16px;background:linear-gradient(to bottom,#00b4ff,transparent);margin:0 auto}
+
+        .p-slider{bottom:60px;left:50%;transform:translateX(-50%);padding:8px 16px;display:flex;align-items:center;gap:10px}
+        .p-slider label{font-size:10px;color:#4a4e6a;white-space:nowrap}
+        .p-slider input[type=range]{width:100px;height:3px;appearance:none;background:rgba(255,255,255,.06);border-radius:2px}
+        .p-slider input[type=range]::-webkit-slider-thumb{appearance:none;width:12px;height:12px;border-radius:50%;background:#00b4ff;cursor:pointer}
+        .sv{font-family:'JetBrains Mono',monospace;font-size:11px;color:#00b4ff;min-width:24px}
     </style>
 </head>
 <body>
-<div class="loader" id="ld"><div class="ring"></div><p>Loading lunar terrain...</p><div class="pct" id="ldp">0%</div></div>
+<div class="loader" id="ld"><div class="ring"></div><p>Rendering lunar terrain...</p><div class="pct" id="ldp">0%</div></div>
 
 <canvas id="c"></canvas>
 <div id="lbls"></div>
+<div id="degs"></div>
 <div class="pin" id="pin"><div class="pin-d"></div><div class="pin-l"></div></div>
 
-<div class="p p-title"><h1>🌑 Lunar South Pole</h1><div class="s">Chandrayaan-2 DFSAR + NASA LRO &nbsp;•&nbsp; Drag to rotate &nbsp;•&nbsp; Click for analysis</div></div>
+<div class="p p-title">
+    <h1>🌑 Lunar South Pole — Water Ice Detection</h1>
+    <div class="sub">ISRO Chandrayaan-2 DFSAR + NASA LRO LOLA/Mini-RF<br>Drag to rotate • Scroll to zoom • Click for point analysis</div>
+</div>
 
 <div class="p p-ctrl" id="ctrl">
-    <button class="btn on" data-t="realistic">🌑 Realistic</button>
-    <button class="btn" data-t="ice_glow">🧊 Ice Deposits</button>
-    <button class="btn" data-t="cpr">📡 CPR Radar</button>
-    <button class="btn" id="bGrid">⊞ Grid Lines</button>
+    <button class="btn on" data-t="realistic">🌑 Lunar Surface</button>
+    <button class="btn" data-t="ice_glow">🧊 Ice Detection Overlay</button>
+    <button class="btn" data-t="cpr">📡 CPR Radar Map</button>
+    <button class="btn on" id="bGrid">⊞ Lat/Lon Grid</button>
     <button class="btn" id="bRot">↻ Auto-Rotate</button>
-    <button class="btn" id="bExag">⛰️ Exaggeration: 8×</button>
+    <button class="btn" id="bExag">⛰️ Terrain: 8×</button>
 </div>
 
 <div class="p p-info">
     <div class="ir"><span class="l">Region</span><span class="v">80°S – 90°S</span></div>
     <div class="ir"><span class="l">Coverage</span><span class="v" id="iCov">—</span></div>
     <div class="ir"><span class="l">Elevation</span><span class="v" id="iElev">—</span></div>
-    <div class="ir"><span class="l">Ice (P>0.5)</span><span class="v">3,531 km²</span></div>
+    <div class="ir"><span class="l">PSR Area</span><span class="v">9,674 km²</span></div>
+    <div class="ir"><span class="l">Ice (P>0.5)</span><span class="v" style="color:#00b4ff">3,531 km²</span></div>
     <div class="ir"><span class="l">Model</span><span class="v">XGBoost AUC 0.76</span></div>
 </div>
 
 <div class="p p-px" id="ppx">
-    <button class="px-x" id="pxc">✕</button>
-    <div class="px-hd">Point Analysis</div>
+    <div class="px-hd"><span>Point Analysis</span><button class="px-x" id="pxc">✕</button></div>
     <div id="pxb"></div>
 </div>
 
 <div class="p p-legend">
-    <div class="leg-item"><div class="leg-dot" style="background:#00d4ff"></div>Water Ice</div>
-    <div class="leg-item"><div class="leg-dot" style="background:#1a5fb4"></div>Perm. Shadow</div>
-    <div class="leg-item"><div class="leg-dot" style="background:#888"></div>Sunlit Terrain</div>
-    <div class="leg-item"><div class="leg-dot" style="background:#f0f921"></div>High CPR</div>
+    <div class="leg-item"><div class="leg-swatch" style="background:#888"></div>Sunlit Surface</div>
+    <div class="leg-item"><div class="leg-swatch" style="background:#111"></div>Permanent Shadow</div>
+    <div class="leg-item"><div class="leg-swatch leg-grad"></div>Ice Probability (low → high)</div>
+</div>
+
+<div class="p p-slider">
+    <label>Terrain Exag.</label>
+    <input type="range" id="exag" min="1" max="25" value="8" step="1">
+    <span class="sv" id="exv">8×</span>
 </div>
 
 <div class="p p-back"><a href="index.html">← 2D Dashboard</a></div>
@@ -129,388 +136,272 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
-const P = 'assets/3d/';
-const R_MOON = 300;           // visual moon radius in scene units
-const CAP_ANGLE = 12;         // degrees from pole our data covers
-const CAP_RAD = CAP_ANGLE * Math.PI / 180;
-const SEG = 512;              // mesh resolution
+const P='assets/3d/',R=300,CAP=12*Math.PI/180,SEG=512;
+let renderer,scene,camera,controls,composer,bloomPass;
+let cap,capGeo,gridGrp,degLabels=[];
+let tex={},meta={},hData,dCtx;
+let exag=8,loaded=0;
+const TOTAL=7,rc=new THREE.Raycaster(),ms=new THREE.Vector2();
+let pinW=null;
 
-let renderer, scene, camera, controls, composer, bloomPass;
-let moonBody, poleCap, poleGeo, gridGroup;
-let textures = {}, meta = {}, hData, dataCtx;
-let exag = 8, useBloom = false, showGrid = true;
-let loaded = 0;
-const TOTAL = 7;
-const rc = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-let pinWorld = null;
+function init(){
+    const cv=document.getElementById('c');
+    renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+    renderer.setSize(innerWidth,innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+    renderer.toneMapping=THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure=1.15;
 
-function init() {
-    const cv = document.getElementById('c');
-    renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
-    renderer.setSize(innerWidth, innerHeight);
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
+    scene=new THREE.Scene();
+    scene.background=new THREE.Color(0x010108);
 
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x010108);
+    camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.5,5000);
+    camera.position.set(0,-R-280,120);
+    camera.up.set(0,0,1);
 
-    // Camera — looking down at the south pole from above
-    camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.5, 5000);
-    camera.position.set(0, -R_MOON - 250, 80);
-    camera.up.set(0, 0, 1); // Z-up so we look down at the pole naturally
+    controls=new OrbitControls(camera,cv);
+    controls.enableDamping=true;
+    controls.dampingFactor=0.06;
+    controls.minDistance=R+10;
+    controls.maxDistance=R+900;
+    controls.target.set(0,-R,0);
 
-    controls = new OrbitControls(camera, cv);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.06;
-    controls.minDistance = R_MOON + 5;
-    controls.maxDistance = R_MOON + 800;
-    controls.target.set(0, -R_MOON, 0);
-
-    // Lighting — harsh sunlight from the side (like real lunar illumination)
-    scene.add(new THREE.AmbientLight(0x222233, 0.2));
-
-    const sun = new THREE.DirectionalLight(0xfff8e8, 2.0);
-    sun.position.set(500, 100, 200);
+    // Harsh sunlight from low angle (like real lunar conditions)
+    scene.add(new THREE.AmbientLight(0x1a1a2a,0.15));
+    const sun=new THREE.DirectionalLight(0xfff5e0,2.2);
+    sun.position.set(500,100,200);
     scene.add(sun);
-
-    const fill = new THREE.DirectionalLight(0x223355, 0.15);
-    fill.position.set(-300, -200, 100);
+    const fill=new THREE.DirectionalLight(0x223355,0.15);
+    fill.position.set(-300,-200,100);
     scene.add(fill);
 
-    // Bloom
-    composer = new EffectComposer(renderer);
-    composer.addPass(new RenderPass(scene, camera));
-    bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.4, 0.3, 0.9);
-    bloomPass.enabled = false;
+    composer=new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene,camera));
+    bloomPass=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.35,0.3,0.9);
+    bloomPass.enabled=false;
     composer.addPass(bloomPass);
 
     makeStars();
-    loadAssets();
+    loadAll();
     bindUI();
     tick();
 
-    addEventListener('resize', () => {
-        camera.aspect = innerWidth / innerHeight;
+    addEventListener('resize',()=>{
+        camera.aspect=innerWidth/innerHeight;
         camera.updateProjectionMatrix();
-        renderer.setSize(innerWidth, innerHeight);
-        composer.setSize(innerWidth, innerHeight);
+        renderer.setSize(innerWidth,innerHeight);
+        composer.setSize(innerWidth,innerHeight);
     });
 }
 
-// ── Stars ──
-function makeStars() {
-    const n = 10000, pos = new Float32Array(n*3);
-    for (let i = 0; i < n; i++) {
-        const th = Math.random()*Math.PI*2;
-        const ph = Math.acos(Math.random()*2-1);
-        const r = 1500 + Math.random()*1500;
-        pos[i*3] = r*Math.sin(ph)*Math.cos(th);
-        pos[i*3+1] = r*Math.sin(ph)*Math.sin(th);
-        pos[i*3+2] = r*Math.cos(ph);
+function makeStars(){
+    const n=12000,pos=new Float32Array(n*3);
+    for(let i=0;i<n;i++){
+        const th=Math.random()*Math.PI*2,ph=Math.acos(Math.random()*2-1),r=1500+Math.random()*2000;
+        pos[i*3]=r*Math.sin(ph)*Math.cos(th);
+        pos[i*3+1]=r*Math.sin(ph)*Math.sin(th);
+        pos[i*3+2]=r*Math.cos(ph);
     }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 0.6, transparent: true, opacity: 0.7 })));
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xffffff,size:0.5,transparent:true,opacity:0.65})));
 }
 
-// ── Load ──
-function loadAssets() {
-    const tl = new THREE.TextureLoader();
-    const bump = () => { loaded++; document.getElementById('ldp').textContent = Math.round(loaded/TOTAL*100)+'%'; if(loaded>=TOTAL) buildScene(); };
+function loadAll(){
+    const tl=new THREE.TextureLoader();
+    const bump=()=>{loaded++;document.getElementById('ldp').textContent=Math.round(loaded/TOTAL*100)+'%';if(loaded>=TOTAL)build();};
 
-    // Heightmap
-    const img = new Image(); img.crossOrigin = 'anonymous';
-    img.onload = () => {
-        const cv = document.createElement('canvas'); cv.width=img.width; cv.height=img.height;
-        const cx = cv.getContext('2d'); cx.drawImage(img,0,0);
-        hData = cx.getImageData(0,0,cv.width,cv.height).data;
-        bump();
-    };
-    img.src = P + 'heightmap_8bit.png';
+    const img=new Image();img.crossOrigin='anonymous';
+    img.onload=()=>{const cv=document.createElement('canvas');cv.width=img.width;cv.height=img.height;const cx=cv.getContext('2d');cx.drawImage(img,0,0);hData=cx.getImageData(0,0,cv.width,cv.height).data;bump();};
+    img.src=P+'heightmap_8bit.png';
 
-    // Data texture
-    const di = new Image(); di.crossOrigin = 'anonymous';
-    di.onload = () => {
-        const cv = document.createElement('canvas'); cv.width=di.width; cv.height=di.height;
-        dataCtx = cv.getContext('2d'); dataCtx.drawImage(di,0,0);
-        bump();
-    };
-    di.src = P + 'data_texture.png';
+    const di=new Image();di.crossOrigin='anonymous';
+    di.onload=()=>{const cv=document.createElement('canvas');cv.width=di.width;cv.height=di.height;dCtx=cv.getContext('2d');dCtx.drawImage(di,0,0);bump();};
+    di.src=P+'data_texture.png';
 
-    // Visual textures
-    ['realistic','ice_glow','cpr'].forEach(k => {
-        const f = k === 'realistic' ? 'texture_realistic.png' : k === 'ice_glow' ? 'texture_ice_glow.png' : 'texture_cpr.png';
-        tl.load(P+f, t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); textures[k]=t; bump(); });
+    ['realistic','ice_glow','cpr'].forEach(k=>{
+        const f=k==='realistic'?'texture_realistic.png':k==='ice_glow'?'texture_ice_glow.png':'texture_cpr.png';
+        tl.load(P+f,t=>{t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=renderer.capabilities.getMaxAnisotropy();tex[k]=t;bump();});
     });
-
-    // Normal map
-    tl.load(P+'normalmap.png', t => { t.colorSpace = THREE.LinearSRGBColorSpace; textures.normal=t; bump(); });
-
-    // Meta
+    tl.load(P+'normalmap.png',t=>{t.colorSpace=THREE.LinearSRGBColorSpace;tex.normal=t;bump();});
     fetch(P+'terrain_meta.json').then(r=>r.json()).then(d=>{meta=d;bump();}).catch(bump);
 }
 
-// ── Build Scene ──
-function buildScene() {
-    // 1. Moon body (dark gray sphere — the rest of the moon)
-    const moonGeo = new THREE.SphereGeometry(R_MOON - 0.5, 64, 64);
-    const moonMat = new THREE.MeshStandardMaterial({ color: 0x1a1a20, roughness: 0.95, metalness: 0 });
-    moonBody = new THREE.Mesh(moonGeo, moonMat);
-    scene.add(moonBody);
+function build(){
+    // Moon body
+    scene.add(new THREE.Mesh(
+        new THREE.SphereGeometry(R-0.5,64,64),
+        new THREE.MeshStandardMaterial({color:0x151518,roughness:0.95,metalness:0})
+    ));
 
-    // 2. South pole cap — high-detail sphere segment with our data
-    buildPoleCap();
-
-    // 3. Grid lines (lat/lon)
+    // South pole cap
+    buildCap();
     buildGrid();
-
-    // 4. Crater labels
     buildLabels();
 
-    // Update HUD
-    document.getElementById('iCov').textContent = `${meta.total_width_km||320} × ${meta.total_height_km||306} km`;
-    document.getElementById('iElev').textContent = `${Math.round(meta.dem_min_m||0)} → ${Math.round(meta.dem_max_m||0)} m`;
-
+    document.getElementById('iCov').textContent=`${meta.total_width_km||320}×${meta.total_height_km||306} km`;
+    document.getElementById('iElev').textContent=`${Math.round(meta.dem_min_m||0)} → ${Math.round(meta.dem_max_m||0)} m`;
     document.getElementById('ld').classList.add('done');
 }
 
-function buildPoleCap() {
-    // Create sphere cap geometry for south pole
-    // South pole is at (0, -R, 0) in our coordinate system
-    // We map our square texture onto a spherical cap
-    const sz = meta.grid_size || 1024;
-    const positions = [];
-    const normals = [];
-    const uvs = [];
-    const indices = [];
+function buildCap(){
+    const sz=meta.grid_size||2048;
+    const positions=[],normals=[],uvs=[],indices=[];
 
-    for (let iy = 0; iy <= SEG; iy++) {
-        for (let ix = 0; ix <= SEG; ix++) {
-            const u = ix / SEG;
-            const v = iy / SEG;
+    for(let iy=0;iy<=SEG;iy++){
+        for(let ix=0;ix<=SEG;ix++){
+            const u=ix/SEG,v=iy/SEG;
+            const dx=u-0.5,dy=v-0.5;
+            const dist=Math.sqrt(dx*dx+dy*dy)*2;
+            const angle=Math.atan2(dy,dx);
+            const colat=dist*CAP;
+            const sinC=Math.sin(colat),cosC=Math.cos(colat);
 
-            // Map UV (0-1) to polar coordinates on sphere
-            // Center of texture = south pole
-            // Edge of texture = CAP_ANGLE degrees from pole
-            const dx = u - 0.5;
-            const dy = v - 0.5;
-            const dist = Math.sqrt(dx*dx + dy*dy) * 2; // 0 at center, 1 at edge
-            const angle = Math.atan2(dy, dx);
-
-            // Colatitude from south pole (0 = pole, CAP_RAD = edge)
-            const colat = dist * CAP_RAD;
-
-            // Spherical to cartesian (south pole = -Y)
-            const sinC = Math.sin(colat);
-            const cosC = Math.cos(colat);
-
-            let px = R_MOON * sinC * Math.cos(angle);
-            let pz = R_MOON * sinC * Math.sin(angle);
-            let py = -R_MOON * cosC;
-
-            // Apply heightmap displacement (radially outward from center)
-            const hx = Math.floor(u * (sz-1));
-            const hy = Math.floor(v * (sz-1));
-            if (hData && dist < 0.5) {
-                const idx = (hy * sz + hx) * 4;
-                const h = (hData[idx] || 0) / 255;
-                const disp = h * exag * 0.15; // scale displacement
-                const nx = sinC * Math.cos(angle);
-                const nz = sinC * Math.sin(angle);
-                const ny = -cosC;
-                px += nx * disp;
-                py += ny * disp;
-                pz += nz * disp;
+            let r=R;
+            if(dist<0.5&&hData){
+                const hx=Math.min(Math.floor(u*(sz-1)),sz-1);
+                const hy=Math.min(Math.floor(v*(sz-1)),sz-1);
+                r+=((hData[(hy*sz+hx)*4]||0)/255)*exag*0.15;
             }
 
-            positions.push(px, py, pz);
-            // Normal (approximate as radial)
-            const len = Math.sqrt(px*px+py*py+pz*pz);
-            normals.push(px/len, py/len, pz/len);
-            uvs.push(u, v);
+            const px=r*sinC*Math.cos(angle);
+            const pz=r*sinC*Math.sin(angle);
+            const py=-r*cosC;
+            positions.push(px,py,pz);
+            const len=Math.sqrt(px*px+py*py+pz*pz);
+            normals.push(px/len,py/len,pz/len);
+            uvs.push(u,v);
         }
     }
-
-    // Indices
-    for (let iy = 0; iy < SEG; iy++) {
-        for (let ix = 0; ix < SEG; ix++) {
-            const a = iy * (SEG+1) + ix;
-            const b = a + 1;
-            const c = a + (SEG+1);
-            const d = c + 1;
-            indices.push(a, c, b, b, c, d);
-        }
+    for(let iy=0;iy<SEG;iy++)for(let ix=0;ix<SEG;ix++){
+        const a=iy*(SEG+1)+ix,b=a+1,c=a+(SEG+1),d=c+1;
+        indices.push(a,c,b,b,c,d);
     }
 
-    poleGeo = new THREE.BufferGeometry();
-    poleGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    poleGeo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-    poleGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    poleGeo.setIndex(indices);
-    poleGeo.computeVertexNormals();
+    capGeo=new THREE.BufferGeometry();
+    capGeo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+    capGeo.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
+    capGeo.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
+    capGeo.setIndex(indices);
+    capGeo.computeVertexNormals();
 
-    const mat = new THREE.MeshStandardMaterial({
-        map: textures.realistic,
-        normalMap: textures.normal || null,
-        normalScale: new THREE.Vector2(1.2, 1.2),
-        roughness: 0.9,
-        metalness: 0.02,
-        side: THREE.FrontSide
+    cap=new THREE.Mesh(capGeo,new THREE.MeshStandardMaterial({
+        map:tex.realistic,normalMap:tex.normal||null,
+        normalScale:new THREE.Vector2(1.5,1.5),
+        roughness:0.88,metalness:0.02,side:THREE.FrontSide
+    }));
+    scene.add(cap);
+}
+
+function rebuildH(){
+    if(!capGeo||!hData)return;
+    const pos=capGeo.attributes.position,sz=meta.grid_size||2048;
+    for(let iy=0;iy<=SEG;iy++)for(let ix=0;ix<=SEG;ix++){
+        const i=iy*(SEG+1)+ix,u=ix/SEG,v=iy/SEG;
+        const dx=u-0.5,dy=v-0.5,dist=Math.sqrt(dx*dx+dy*dy)*2;
+        const angle=Math.atan2(dy,dx),colat=dist*CAP;
+        let r=R;
+        if(dist<0.5){const hx=Math.min(Math.floor(u*(sz-1)),sz-1),hy=Math.min(Math.floor(v*(sz-1)),sz-1);r+=((hData[(hy*sz+hx)*4]||0)/255)*exag*0.15;}
+        pos.setXYZ(i,r*Math.sin(colat)*Math.cos(angle),-r*Math.cos(colat),r*Math.sin(colat)*Math.sin(angle));
+    }
+    pos.needsUpdate=true;capGeo.computeVertexNormals();
+}
+
+function buildGrid(){
+    gridGrp=new THREE.Group();
+    // Latitude circles
+    [82,84,86,88].forEach(lat=>{
+        const colat=(90-lat)*Math.PI/180,r=(R+0.3)*Math.sin(colat),y=-(R+0.3)*Math.cos(colat);
+        const pts=[];for(let a=0;a<=360;a+=1.5)pts.push(new THREE.Vector3(r*Math.cos(a*Math.PI/180),y,r*Math.sin(a*Math.PI/180)));
+        gridGrp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x4466aa,transparent:true,opacity:0.3})));
     });
-
-    poleCap = new THREE.Mesh(poleGeo, mat);
-    scene.add(poleCap);
-}
-
-function rebuildCapHeights() {
-    if (!poleGeo || !hData) return;
-    const pos = poleGeo.attributes.position;
-    const sz = meta.grid_size || 1024;
-
-    for (let iy = 0; iy <= SEG; iy++) {
-        for (let ix = 0; ix <= SEG; ix++) {
-            const i = iy * (SEG+1) + ix;
-            const u = ix / SEG;
-            const v = iy / SEG;
-            const dx = u - 0.5;
-            const dy = v - 0.5;
-            const dist = Math.sqrt(dx*dx+dy*dy)*2;
-            const angle = Math.atan2(dy, dx);
-            const colat = dist * CAP_RAD;
-
-            const sinC = Math.sin(colat);
-            const cosC = Math.cos(colat);
-
-            let r = R_MOON;
-            if (dist < 0.5) {
-                const hx = Math.floor(u*(sz-1));
-                const hy = Math.floor(v*(sz-1));
-                const idx = (hy*sz+hx)*4;
-                r += (hData[idx]||0)/255 * exag * 0.15;
-            }
-
-            pos.setXYZ(i,
-                r * sinC * Math.cos(angle),
-                -r * cosC,
-                r * sinC * Math.sin(angle)
-            );
+    // Longitude lines
+    for(let lon=0;lon<360;lon+=30){
+        const pts=[],rad=lon*Math.PI/180;
+        for(let lat=78;lat<=90;lat+=0.3){
+            const colat=(90-lat)*Math.PI/180,r=(R+0.3)*Math.sin(colat),y=-(R+0.3)*Math.cos(colat);
+            pts.push(new THREE.Vector3(r*Math.cos(rad),y,r*Math.sin(rad)));
         }
+        gridGrp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x4466aa,transparent:true,opacity:0.2})));
     }
-    pos.needsUpdate = true;
-    poleGeo.computeVertexNormals();
-}
+    scene.add(gridGrp);
 
-// ── Grid Lines ──
-function buildGrid() {
-    gridGroup = new THREE.Group();
-
-    // Latitude circles at 85°, 87°, 89°
-    [85, 87, 89].forEach(lat => {
-        const colat = (90 - lat) * Math.PI / 180;
-        const r = (R_MOON + 0.3) * Math.sin(colat);
-        const y = -(R_MOON + 0.3) * Math.cos(colat);
-        const pts = [];
-        for (let a = 0; a <= 360; a += 2) {
-            const rad = a * Math.PI / 180;
-            pts.push(new THREE.Vector3(r*Math.cos(rad), y, r*Math.sin(rad)));
-        }
-        const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
-        const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: 0x334466, transparent: true, opacity: 0.4 }));
-        gridGroup.add(line);
+    // Degree labels at grid intersections
+    const container=document.getElementById('degs');
+    [82,84,86,88].forEach(lat=>{
+        [0,90,180,270].forEach(lon=>{
+            const el=document.createElement('div');
+            el.className='deg-lbl';
+            el.textContent=`${lat}°S`;
+            el.dataset.lat=lat;el.dataset.lon=lon;
+            container.appendChild(el);
+            degLabels.push(el);
+        });
     });
-
-    // Longitude lines every 30°
-    for (let lon = 0; lon < 360; lon += 30) {
-        const pts = [];
-        const rad = lon * Math.PI / 180;
-        for (let lat = 78; lat <= 90; lat += 0.5) {
-            const colat = (90 - lat) * Math.PI / 180;
-            const r = (R_MOON + 0.3) * Math.sin(colat);
-            const y = -(R_MOON + 0.3) * Math.cos(colat);
-            pts.push(new THREE.Vector3(r*Math.cos(rad), y, r*Math.sin(rad)));
-        }
-        const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
-        gridGroup.add(new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: 0x334466, transparent: true, opacity: 0.25 })));
+    // Longitude labels
+    for(let lon=0;lon<360;lon+=30){
+        const el=document.createElement('div');
+        el.className='deg-lbl';
+        el.textContent=`${lon}°`;
+        el.dataset.lat=80;el.dataset.lon=lon;
+        container.appendChild(el);
+        degLabels.push(el);
     }
-
-    scene.add(gridGroup);
 }
 
-// ── Labels ──
-function buildLabels() {
-    const craters = meta.craters || [
-        {name:"Faustini",px:707,py:563,radius_km:39},
-        {name:"Shoemaker",px:563,py:666,radius_km:51},
-        {name:"Haworth",px:430,py:512,radius_km:28},
-        {name:"Shackleton",px:543,py:328,radius_km:11}
-    ];
+function latLonToWorld(lat,lon){
+    const colat=(90-lat)*Math.PI/180,rad=lon*Math.PI/180;
+    const r=R+3;
+    return new THREE.Vector3(r*Math.sin(colat)*Math.cos(rad),-r*Math.cos(colat),r*Math.sin(colat)*Math.sin(rad));
+}
 
-    const container = document.getElementById('lbls');
-    craters.forEach(c => {
-        // Create label
-        const el = document.createElement('div');
-        el.className = 'clbl';
-        el.innerHTML = `<div class="clbl-name">${c.name}</div><div class="clbl-info">${c.radius_km||'—'} km radius</div>`;
-        el.dataset.u = (c.px / (meta.grid_size||1024)).toFixed(4);
-        el.dataset.v = (c.py / (meta.grid_size||1024)).toFixed(4);
+function buildLabels(){
+    const container=document.getElementById('lbls');
+    (meta.craters||[]).forEach(c=>{
+        const el=document.createElement('div');
+        el.className='clbl';
+        el.innerHTML=`<div class="clbl-name">${c.name}</div><div class="clbl-sub">${c.radius_km} km ⌀ ${c.depth_km?'• '+c.depth_km+' km deep':''}</div>`;
+        el.dataset.u=(c.px/(meta.grid_size||2048)).toFixed(4);
+        el.dataset.v=(c.py/(meta.grid_size||2048)).toFixed(4);
         container.appendChild(el);
     });
 }
 
-function uvToWorld(u, v) {
-    const dx = u - 0.5, dy = v - 0.5;
-    const dist = Math.sqrt(dx*dx+dy*dy)*2;
-    const angle = Math.atan2(dy, dx);
-    const colat = dist * CAP_RAD;
-    const r = R_MOON + 2;
-    return new THREE.Vector3(
-        r * Math.sin(colat) * Math.cos(angle),
-        -r * Math.cos(colat),
-        r * Math.sin(colat) * Math.sin(angle)
-    );
+function uvToWorld(u,v){
+    const dx=u-0.5,dy=v-0.5,dist=Math.sqrt(dx*dx+dy*dy)*2;
+    const angle=Math.atan2(dy,dx),colat=dist*CAP;
+    return new THREE.Vector3((R+2)*Math.sin(colat)*Math.cos(angle),-(R+2)*Math.cos(colat),(R+2)*Math.sin(colat)*Math.sin(angle));
 }
 
-// ── Click inspect ──
-function onClick(e) {
-    if (!poleCap || !dataCtx) return;
-    const rect = renderer.domElement.getBoundingClientRect();
-    mouse.x = ((e.clientX-rect.left)/rect.width)*2-1;
-    mouse.y = -((e.clientY-rect.top)/rect.height)*2+1;
+function onClick(e){
+    if(!cap||!dCtx)return;
+    const rect=renderer.domElement.getBoundingClientRect();
+    ms.x=((e.clientX-rect.left)/rect.width)*2-1;
+    ms.y=-((e.clientY-rect.top)/rect.height)*2+1;
+    rc.setFromCamera(ms,camera);
+    const hits=rc.intersectObject(cap);
+    if(!hits.length)return;
+    const uv=hits[0].uv;if(!uv)return;
+    pinW=hits[0].point.clone();
 
-    rc.setFromCamera(mouse, camera);
-    const hits = rc.intersectObject(poleCap);
-    if (!hits.length) return;
+    const sz=meta.grid_size||2048;
+    const px=Math.floor(uv.x*(sz-1)),py=Math.floor(uv.y*(sz-1));
+    const d=dCtx.getImageData(px,py,1,1).data;
+    const cpr=(d[0]/255)*3,ice=d[1]/255,slp=(d[2]/255)*45,psr=d[3]>128;
+    const hVal=hData?(hData[(py*sz+px)*4]||0)/255:0;
+    const elev=Math.round((meta.dem_min_m||0)+hVal*(meta.dem_range_m||3000));
 
-    const uv = hits[0].uv;
-    if (!uv) return;
-    pinWorld = hits[0].point.clone();
+    const ipct=(ice*100).toFixed(1);
+    const ib=ice>0.5?`<span class="bg bg-ice">ICE LIKELY</span>`:ice>0.2?`<span class="bg bg-ice" style="opacity:.5">Possible</span>`:`<span class="bg bg-no">Unlikely</span>`;
+    const pb=psr?`<span class="bg bg-psr">Perm. Shadow</span>`:`<span class="bg bg-sun">Sunlit</span>`;
+    const sb=slp<15?`<span class="bg bg-ok">Safe</span>`:slp<25?`<span class="bg bg-w">Caution</span>`:`<span class="bg bg-d">Steep</span>`;
 
-    const sz = meta.grid_size||1024;
-    const px = Math.floor(uv.x*(sz-1));
-    const py = Math.floor(uv.y*(sz-1));
-    const d = dataCtx.getImageData(px, py, 1, 1).data;
-
-    const cpr = (d[0]/255)*3;
-    const ice = d[1]/255;
-    const slp = (d[2]/255)*45;
-    const psr = d[3] > 128;
-
-    const hVal = hData ? hData[(py*sz+px)*4]/255 : 0;
-    const elev = Math.round((meta.dem_min_m||0) + hVal*(meta.dem_range_m||3000));
-
-    const ipct = (ice*100).toFixed(1);
-    const ib = ice>0.5 ? `<span class="bg bg-ice">ICE LIKELY</span>` : ice>0.2 ? `<span class="bg bg-ice" style="opacity:.6">Possible</span>` : `<span class="bg bg-no">Unlikely</span>`;
-    const pb = psr ? `<span class="bg bg-psr">Shadow</span>` : `<span class="bg bg-sun">Sunlit</span>`;
-    const sb = slp<15 ? `<span class="bg bg-ok">Safe</span>` : slp<25 ? `<span class="bg bg-w">Caution</span>` : `<span class="bg bg-d">Steep</span>`;
-
-    document.getElementById('pxb').innerHTML = `
+    document.getElementById('pxb').innerHTML=`
         <div class="px-r"><span class="l">Ice Probability</span><span class="v">${ipct}% ${ib}</span></div>
-        <div class="bar"><div class="bar-f" style="width:${ipct}%;background:linear-gradient(90deg,#004488,#00d4ff)"></div></div>
-        <div class="px-r" style="margin-top:6px"><span class="l">CPR</span><span class="v">${cpr.toFixed(3)}</span></div>
+        <div class="bar"><div class="bar-f" style="width:${ipct}%;background:linear-gradient(90deg,#002255,#00aaff)"></div></div>
+        <div class="px-r" style="margin-top:8px"><span class="l">CPR</span><span class="v">${cpr.toFixed(3)} ${cpr>1?'<span class="bg bg-ice" style="font-size:9px">Anomaly</span>':''}</span></div>
         <div class="bar"><div class="bar-f" style="width:${Math.min(cpr/3*100,100).toFixed(0)}%;background:linear-gradient(90deg,#1a0533,#f0f921)"></div></div>
-        <div class="px-r" style="margin-top:6px"><span class="l">Slope</span><span class="v">${slp.toFixed(1)}° ${sb}</span></div>
+        <div class="px-r" style="margin-top:8px"><span class="l">Slope</span><span class="v">${slp.toFixed(1)}° ${sb}</span></div>
         <div class="px-r"><span class="l">Illumination</span><span class="v">${pb}</span></div>
         <div class="px-r"><span class="l">Elevation</span><span class="v">${elev} m</span></div>
         <div class="px-r"><span class="l">Pixel</span><span class="v" style="color:#3a3e58">(${px}, ${py})</span></div>
@@ -518,79 +409,58 @@ function onClick(e) {
     document.getElementById('ppx').classList.add('show');
 }
 
-// ── UI ──
-function bindUI() {
-    const cv = document.getElementById('c');
-    let md = {x:0,y:0};
-    cv.addEventListener('mousedown', e => { md={x:e.clientX,y:e.clientY}; });
-    cv.addEventListener('mouseup', e => { if(Math.abs(e.clientX-md.x)<4 && Math.abs(e.clientY-md.y)<4) onClick(e); });
+function bindUI(){
+    const cv=document.getElementById('c');
+    let md={x:0,y:0};
+    cv.addEventListener('mousedown',e=>{md={x:e.clientX,y:e.clientY}});
+    cv.addEventListener('mouseup',e=>{if(Math.abs(e.clientX-md.x)<4&&Math.abs(e.clientY-md.y)<4)onClick(e);});
 
-    document.getElementById('pxc').onclick = () => { document.getElementById('ppx').classList.remove('show'); pinWorld=null; document.getElementById('pin').style.opacity='0'; };
-    addEventListener('keydown', e => { if(e.key==='Escape'){document.getElementById('ppx').classList.remove('show');pinWorld=null;document.getElementById('pin').style.opacity='0';} });
+    document.getElementById('pxc').onclick=()=>{document.getElementById('ppx').classList.remove('show');pinW=null;document.getElementById('pin').style.opacity='0';};
+    addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('ppx').classList.remove('show');pinW=null;document.getElementById('pin').style.opacity='0';}});
 
-    // Texture
-    document.querySelectorAll('[data-t]').forEach(b => {
-        b.onclick = () => {
+    document.querySelectorAll('[data-t]').forEach(b=>{
+        b.onclick=()=>{
             document.querySelectorAll('[data-t]').forEach(x=>x.classList.remove('on'));
             b.classList.add('on');
-            const k = b.dataset.t;
-            if(poleCap && textures[k]){poleCap.material.map=textures[k];poleCap.material.needsUpdate=true;}
-            useBloom = k==='ice_glow'; bloomPass.enabled = useBloom;
+            const k=b.dataset.t;
+            if(cap&&tex[k]){cap.material.map=tex[k];cap.material.needsUpdate=true;}
+            bloomPass.enabled=k==='ice_glow';
         };
     });
 
-    // Grid
-    document.getElementById('bGrid').onclick = function() {
-        showGrid = !showGrid; gridGroup.visible = showGrid;
-        this.classList.toggle('on', showGrid);
-    };
-    document.getElementById('bGrid').classList.add('on');
+    document.getElementById('bGrid').onclick=function(){this.classList.toggle('on');gridGrp.visible=this.classList.contains('on');document.querySelectorAll('.deg-lbl').forEach(e=>e.style.display=this.classList.contains('on')?'':'none');};
+    document.getElementById('bRot').onclick=function(){controls.autoRotate=!controls.autoRotate;controls.autoRotateSpeed=0.3;this.classList.toggle('on',controls.autoRotate);};
 
-    // Rotate
-    document.getElementById('bRot').onclick = function() {
-        controls.autoRotate = !controls.autoRotate;
-        controls.autoRotateSpeed = 0.3;
-        this.classList.toggle('on', controls.autoRotate);
-    };
-
-    // Exaggeration
-    let exagLevels = [1, 4, 8, 15, 25];
-    let exagIdx = 2;
-    document.getElementById('bExag').onclick = function() {
-        exagIdx = (exagIdx + 1) % exagLevels.length;
-        exag = exagLevels[exagIdx];
-        this.textContent = `⛰️ Exaggeration: ${exag}×`;
-        rebuildCapHeights();
-    };
+    const exagLevels=[1,4,8,15,25];let eIdx=2;
+    document.getElementById('bExag').onclick=function(){eIdx=(eIdx+1)%exagLevels.length;exag=exagLevels[eIdx];this.textContent=`⛰️ Terrain: ${exag}×`;document.getElementById('exag').value=exag;document.getElementById('exv').textContent=exag+'×';rebuildH();};
+    const sl=document.getElementById('exag');
+    sl.oninput=()=>{exag=parseInt(sl.value);document.getElementById('exv').textContent=exag+'×';rebuildH();};
 }
 
-// ── Tick ──
-function tick() {
+function tick(){
     requestAnimationFrame(tick);
     controls.update();
 
-    // Pin
-    if (pinWorld) {
-        const p = pinWorld.clone().project(camera);
-        if (p.z < 1) {
-            const pin = document.getElementById('pin');
-            pin.style.left = ((p.x*.5+.5)*innerWidth)+'px';
-            pin.style.top = ((-p.y*.5+.5)*innerHeight)+'px';
-            pin.style.opacity = '1';
-        }
-    }
+    if(pinW){const p=pinW.clone().project(camera);if(p.z<1){const pin=document.getElementById('pin');pin.style.left=((p.x*.5+.5)*innerWidth)+'px';pin.style.top=((-p.y*.5+.5)*innerHeight)+'px';pin.style.opacity='1';}}
 
-    // Labels
-    document.querySelectorAll('.clbl').forEach(el => {
-        const u = parseFloat(el.dataset.u);
-        const v = parseFloat(el.dataset.v);
-        const wp = uvToWorld(u, v).project(camera);
-        if (wp.z > 1) { el.style.display='none'; return; }
-        el.style.display = '';
-        el.style.left = ((wp.x*.5+.5)*innerWidth)+'px';
-        el.style.top = ((-wp.y*.5+.5)*innerHeight)+'px';
-        const d = camera.position.distanceTo(uvToWorld(u, v));
-        el.style.opacity = Math.max(0, Math.min(1, 1-(d-200)/500));
+    // Crater labels
+    document.querySelectorAll('.clbl').forEach(el=>{
+        const wp=uvToWorld(parseFloat(el.dataset.u),parseFloat(el.dataset.v)).project(camera);
+        if(wp.z>1){el.style.display='none';return;}
+        el.style.display='';
+        el.style.left=((wp.x*.5+.5)*innerWidth)+'px';
+        el.style.top=((-wp.y*.5+.5)*innerHeight)+'px';
+        const d=camera.position.distanceTo(uvToWorld(parseFloat(el.dataset.u),parseFloat(el.dataset.v)));
+        el.style.opacity=Math.max(0,Math.min(1,1-(d-250)/500));
+    });
+
+    // Degree labels
+    degLabels.forEach(el=>{
+        const wp=latLonToWorld(parseFloat(el.dataset.lat),parseFloat(el.dataset.lon)).project(camera);
+        if(wp.z>1){el.style.display='none';return;}
+        el.style.display='';
+        el.style.left=((wp.x*.5+.5)*innerWidth)+'px';
+        el.style.top=((-wp.y*.5+.5)*innerHeight)+'px';
     });
 
     composer.render();
