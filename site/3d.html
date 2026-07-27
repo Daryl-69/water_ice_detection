@@ -155,16 +155,17 @@ function init(){
     scene=new THREE.Scene();
     scene.background=new THREE.Color(0x010108);
 
-    camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.5,5000);
+    camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.01,8000);
     camera.position.set(0,-R-280,120);
     camera.up.set(0,0,1);
 
     controls=new OrbitControls(camera,cv);
     controls.enableDamping=true;
     controls.dampingFactor=0.06;
-    controls.minDistance=R+10;
+    controls.minDistance=1;          // can zoom right onto the surface
     controls.maxDistance=R+900;
     controls.target.set(0,-R,0);
+    controls.zoomSpeed=1.2;
 
     // Harsh sunlight from low angle (like real lunar conditions)
     scene.add(new THREE.AmbientLight(0x1a1a2a,0.15));
@@ -462,6 +463,14 @@ function tick(){
         el.style.left=((wp.x*.5+.5)*innerWidth)+'px';
         el.style.top=((-wp.y*.5+.5)*innerHeight)+'px';
     });
+
+    // Dynamic near plane: when close to surface, tighten near clip to avoid z-fighting
+    const distToCenter=camera.position.length();
+    const distToSurface=Math.max(distToCenter-R,0.1);
+    if(distToSurface<50){camera.near=0.001;camera.far=2000;}
+    else if(distToSurface<200){camera.near=0.05;camera.far=4000;}
+    else{camera.near=0.5;camera.far=8000;}
+    camera.updateProjectionMatrix();
 
     composer.render();
 }
