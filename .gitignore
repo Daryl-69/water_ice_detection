@@ -1,0 +1,21 @@
+# Datasets (too large for GitHub)
+datasets/
+*.tif
+*.jp2
+*.img
+*.joblib
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+
+# Temp
+*.tmp

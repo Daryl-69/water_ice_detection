@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunar Ice Prospector — South Pole Water Ice Detection</title>
+    <meta name="description" content="AI-powered water ice detection on the Lunar South Pole using Chandrayaan-2 DFSAR radar and NASA LOLA data.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- ═══ Header ═══ -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">
+                <span class="logo-icon">🌑</span>
+                <div class="logo-text">
+                    <h1>Lunar Ice Prospector</h1>
+                    <span class="subtitle">Chandrayaan-2 DFSAR + NASA LOLA • AI-Powered Detection</span>
+                </div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="status-pill online">
+                <span class="status-dot"></span>
+                <span>Model Trained</span>
+            </div>
+            <button class="btn-about" id="btnAbout">About</button>
+        </div>
+    </header>
+
+    <!-- ═══ Main Layout ═══ -->
+    <main class="main">
+        <!-- ─── Left Sidebar ─── -->
+        <aside class="sidebar">
+            <!-- Crater Selector -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">📍</span>
+                    <h3>Crater</h3>
+                </div>
+                <select id="craterSelect" class="select">
+                    <option value="all">Entire South Pole</option>
+                    <option value="faustini" selected>Faustini</option>
+                    <option value="shoemaker">Shoemaker</option>
+                    <option value="haworth">Haworth</option>
+                    <option value="cabeus">Cabeus</option>
+                    <option value="shackleton">Shackleton</option>
+                </select>
+            </div>
+
+            <!-- Layer Controls -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">🗂️</span>
+                    <h3>Map Layers</h3>
+                </div>
+                <div class="layer-list">
+                    <label class="layer-item active" data-layer="cpr">
+                        <input type="radio" name="baseLayer" value="cpr" checked>
+                        <span class="layer-color" style="background: linear-gradient(90deg, #000004, #b73779, #fcffa4)"></span>
+                        <span class="layer-name">CPR Radar Map</span>
+                    </label>
+                    <label class="layer-item" data-layer="vol">
+                        <input type="radio" name="baseLayer" value="vol">
+                        <span class="layer-color" style="background: linear-gradient(90deg, #440154, #21918c, #fde725)"></span>
+                        <span class="layer-name">Volume Scattering</span>
+                    </label>
+                </div>
+
+                <div class="divider"></div>
+                <p class="layer-section-title">Overlays</p>
+
+                <div class="layer-list">
+                    <label class="layer-item" data-layer="psr">
+                        <input type="checkbox" id="layerPSR" checked>
+                        <span class="layer-color" style="background: #1a5fb4"></span>
+                        <span class="layer-name">PSR Shadow</span>
+                        <input type="range" class="opacity-slider" id="opacityPSR" min="0" max="100" value="60" title="Opacity">
+                    </label>
+                    <label class="layer-item" data-layer="ice_phase1">
+                        <input type="checkbox" id="layerPhase1" checked>
+                        <span class="layer-color" style="background: #00d4ff"></span>
+                        <span class="layer-name">Ice — Phase 1 (Threshold)</span>
+                        <input type="range" class="opacity-slider" id="opacityPhase1" min="0" max="100" value="85" title="Opacity">
+                    </label>
+                    <label class="layer-item" data-layer="ice_ml">
+                        <input type="checkbox" id="layerML">
+                        <span class="layer-color" style="background: linear-gradient(90deg, #0d0887, #cc4778, #f0f921)"></span>
+                        <span class="layer-name">Ice — Phase 2 (ML)</span>
+                        <input type="range" class="opacity-slider" id="opacityML" min="0" max="100" value="80" title="Opacity">
+                    </label>
+                    <label class="layer-item" data-layer="confidence">
+                        <input type="checkbox" id="layerConf">
+                        <span class="layer-color" style="background: linear-gradient(90deg, #00ffff, #ff00ff)"></span>
+                        <span class="layer-name">Confidence Score</span>
+                        <input type="range" class="opacity-slider" id="opacityConf" min="0" max="100" value="70" title="Opacity">
+                    </label>
+                    <label class="layer-item" data-layer="slope">
+                        <input type="checkbox" id="layerSlope">
+                        <span class="layer-color" style="background: linear-gradient(90deg, #27ae60, #f39c12, #c0392b)"></span>
+                        <span class="layer-name">Slope Safety</span>
+                        <input type="range" class="opacity-slider" id="opacitySlope" min="0" max="100" value="70" title="Opacity">
+                    </label>
+                    <label class="layer-item" data-layer="dem">
+                        <input type="checkbox" id="layerDEM">
+                        <span class="layer-color" style="background: linear-gradient(90deg, #003300, #99cc99, #ffffff)"></span>
+                        <span class="layer-name">DEM Terrain</span>
+                        <input type="range" class="opacity-slider" id="opacityDEM" min="0" max="100" value="75" title="Opacity">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Method Comparison -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">⚖️</span>
+                    <h3>Compare Methods</h3>
+                </div>
+                <div class="compare-buttons">
+                    <button class="btn-compare active" data-mode="single" id="btnSingle">Single View</button>
+                    <button class="btn-compare" data-mode="split" id="btnSplit">Split View</button>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">🎨</span>
+                    <h3>Legend</h3>
+                </div>
+                <div class="legend" id="legendContent">
+                    <div class="legend-item">
+                        <span class="legend-swatch" style="background: linear-gradient(90deg, #000004, #b73779, #fcffa4)"></span>
+                        <span>CPR: 0 (soil) → 3+ (anomaly)</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-swatch" style="background: #1a5fb4"></span>
+                        <span>Permanently Shadowed Region</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-swatch" style="background: #00d4ff"></span>
+                        <span>Ice Detection (Phase 1)</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ─── Map Viewer ─── -->
+        <section class="map-container">
+            <div class="map-viewport" id="mapViewport">
+                <canvas id="mapCanvas"></canvas>
+                <div class="map-crosshair" id="crosshair"></div>
+            </div>
+
+            <!-- Zoom controls -->
+            <div class="map-controls">
+                <button class="map-btn" id="zoomIn" title="Zoom In">+</button>
+                <button class="map-btn" id="zoomOut" title="Zoom Out">−</button>
+                <button class="map-btn" id="zoomFit" title="Fit to View">⊡</button>
+            </div>
+
+            <!-- Coordinates display -->
+            <div class="map-coords" id="mapCoords">
+                <span id="coordText">Hover over map</span>
+            </div>
+
+            <!-- Pixel info popup -->
+            <div class="pixel-popup" id="pixelPopup">
+                <div class="popup-header">
+                    <span>📍 Pixel Info</span>
+                    <button class="popup-close" id="popupClose">×</button>
+                </div>
+                <div class="popup-body" id="popupBody">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+
+            <!-- Split view overlay -->
+            <div class="split-overlay" id="splitOverlay">
+                <div class="split-label left">Phase 1: Thresholds</div>
+                <div class="split-divider" id="splitDivider"></div>
+                <div class="split-label right">Phase 2: ML</div>
+            </div>
+        </section>
+
+        <!-- ─── Right Panel: Stats ─── -->
+        <aside class="stats-panel">
+            <!-- Key Metrics -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">📊</span>
+                    <h3>Key Metrics</h3>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="metricSurvey">34,320</div>
+                        <div class="metric-label">Survey Area (km²)</div>
+                    </div>
+                    <div class="metric-card highlight">
+                        <div class="metric-value" id="metricIceP1">24.2</div>
+                        <div class="metric-label">Phase 1 Ice (km²)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metricPSR">9,674</div>
+                        <div class="metric-label">PSR Coverage (km²)</div>
+                    </div>
+                    <div class="metric-card highlight-alt">
+                        <div class="metric-value" id="metricIceML">3,531</div>
+                        <div class="metric-label">XGBoost ML Ice (km²)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature Importance -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">🧠</span>
+                    <h3>AI Feature Importance</h3>
+                </div>
+                <div class="feature-bars" id="featureBars">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+
+            <!-- Detection Pipeline -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">🔬</span>
+                    <h3>Detection Pipeline</h3>
+                </div>
+                <div class="pipeline">
+                    <div class="pipeline-step">
+                        <div class="step-number">1</div>
+                        <div class="step-info">
+                            <div class="step-name">CPR + VOL Radar</div>
+                            <div class="step-value" id="pipeStep1">119.8 km²</div>
+                        </div>
+                    </div>
+                    <div class="pipeline-arrow">↓ <span class="filter-pct">−79%</span></div>
+                    <div class="pipeline-step">
+                        <div class="step-number">2</div>
+                        <div class="step-info">
+                            <div class="step-name">+ PSR Shadow Filter</div>
+                            <div class="step-value" id="pipeStep2">24.7 km²</div>
+                        </div>
+                    </div>
+                    <div class="pipeline-arrow">↓ <span class="filter-pct">−0.4%</span></div>
+                    <div class="pipeline-step final">
+                        <div class="step-number">3</div>
+                        <div class="step-info">
+                            <div class="step-name">+ Slope Filter (FINAL)</div>
+                            <div class="step-value" id="pipeStep3">24.6 km²</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Sources -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">🛰️</span>
+                    <h3>Data Sources</h3>
+                </div>
+                <div class="data-sources">
+                    <div class="source-item">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23ff6b00'/%3E%3Ctext x='12' y='16' text-anchor='middle' fill='white' font-size='10' font-weight='bold'%3EISRO%3C/text%3E%3C/svg%3E" alt="ISRO">
+                        <div>
+                            <strong>ISRO DFSAR</strong>
+                            <span>L-band SAR, 25m/px, 7 bands</span>
+                        </div>
+                    </div>
+                    <div class="source-item">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%230066cc'/%3E%3Ctext x='12' y='16' text-anchor='middle' fill='white' font-size='10' font-weight='bold'%3ENASA%3C/text%3E%3C/svg%3E" alt="NASA">
+                        <div>
+                            <strong>NASA LRO LOLA</strong>
+                            <span>PSR map + DEM, 5-60m/px</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- ═══ About Modal ═══ -->
+    <div class="modal-overlay" id="aboutModal">
+        <div class="modal">
+            <button class="modal-close" id="modalClose">×</button>
+            <h2>About Lunar Ice Prospector</h2>
+            <p>An AI-powered analysis tool for detecting water ice deposits in permanently shadowed regions of the Lunar South Pole.</p>
+            <h3>How It Works</h3>
+            <ol>
+                <li><strong>Phase 1:</strong> Rule-based detection using CPR &gt; 1.0 and Volume Scattering thresholds, filtered by Permanent Shadow Regions and terrain slope. Found 24.2 km² of ice.</li>
+                <li><strong>Phase 2:</strong> XGBoost ML model (500 trees) trained on all 7 DFSAR L-band radar bands with <em>independent</em> labels from NASA LRO Mini-RF S-band radar. ROC AUC: 0.76. Found 3,531 km² at P&gt;0.5.</li>
+            </ol>
+            <h3>Datasets</h3>
+            <ul>
+                <li><strong>ISRO Chandrayaan-2 DFSAR:</strong> L-band SAR, 7 decomposition parameters at 25m/px</li>
+                <li><strong>NASA LRO LOLA:</strong> PSR illumination map (60m/px) + LM7/Shoemaker/Haworth DEMs (5m/px)</li>
+                <li><strong>NASA LRO Mini-RF:</strong> S-band radar CPR map (237m/px) — independent validation labels</li>
+            </ul>
+            <p class="modal-footer">Built as a personal research project inspired by ISRO's lunar exploration program.</p>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

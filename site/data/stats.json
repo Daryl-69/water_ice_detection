@@ -1,0 +1,52 @@
+{
+  "survey_area_km2": 34320.4,
+  "psr_area_km2": 9673.9,
+  "psr_pct": 9.9,
+  "phase1_ice_km2": 24.6,
+  "ml_ice_50_km2": 3531.0,
+  "ml_ice_70_km2": 1899.6,
+  "ml_ice_90_km2": 226.6,
+  "roc_auc": 0.76,
+  "model": "XGBoost (500 trees, lr=0.05)",
+  "label_source": "NASA LRO Mini-RF S-band CPR",
+  "cpr_median": 0.2484,
+  "total_pixels": 54912646,
+  "image_width": 3199,
+  "image_height": 3060,
+  "feature_importance": {
+    "ODD": 0.449,
+    "VOL": 0.201,
+    "CPR": 0.095,
+    "HLX": 0.07,
+    "TRT": 0.07,
+    "EVN": 0.061,
+    "SRD": 0.053
+  },
+  "craters": [
+    {
+      "name": "Faustini",
+      "lat": -87.3,
+      "lon": 77.0
+    },
+    {
+      "name": "Shoemaker",
+      "lat": -88.1,
+      "lon": 44.9
+    },
+    {
+      "name": "Haworth",
+      "lat": -87.5,
+      "lon": -5.0
+    },
+    {
+      "name": "Cabeus",
+      "lat": -85.3,
+      "lon": -35.7
+    },
+    {
+      "name": "Shackleton",
+      "lat": -89.7,
+      "lon": 129.8
+    }
+  ]
+}
