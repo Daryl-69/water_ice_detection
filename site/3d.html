@@ -102,6 +102,7 @@
     <div class="ir"><span class="l">Region</span><span class="v">80°S – 90°S</span></div>
     <div class="ir"><span class="l">Coverage</span><span class="v" id="iCov">—</span></div>
     <div class="ir"><span class="l">Elevation</span><span class="v" id="iElev">—</span></div>
+    <div class="ir"><span class="l">Altitude</span><span class="v" id="iAlt">—</span></div>
     <div class="ir"><span class="l">PSR Area</span><span class="v">9,674 km²</span></div>
     <div class="ir"><span class="l">Ice (P>0.5)</span><span class="v" style="color:#00b4ff">3,531 km²</span></div>
     <div class="ir"><span class="l">Model</span><span class="v">XGBoost AUC 0.76</span></div>
@@ -168,13 +169,21 @@ function init(){
     controls.zoomSpeed=1.2;
 
     // Harsh sunlight from low angle (like real lunar conditions)
-    scene.add(new THREE.AmbientLight(0x1a1a2a,0.15));
-    const sun=new THREE.DirectionalLight(0xfff5e0,2.2);
-    sun.position.set(500,100,200);
+    scene.add(new THREE.AmbientLight(0x151520,0.15));
+    const sun=new THREE.DirectionalLight(0xfff8f0,2.5);
+    sun.position.set(800,150,300);
     scene.add(sun);
     const fill=new THREE.DirectionalLight(0x223355,0.15);
     fill.position.set(-300,-200,100);
     scene.add(fill);
+
+    // Sun visual representation
+    const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(20,32,32), new THREE.MeshBasicMaterial({color:0xffffff}));
+    sunMesh.position.copy(sun.position);
+    scene.add(sunMesh);
+    const sunGlow = new THREE.Mesh(new THREE.SphereGeometry(60,32,32), new THREE.MeshBasicMaterial({color:0xffdd88,transparent:true,opacity:0.15,blending:THREE.AdditiveBlending}));
+    sunGlow.position.copy(sun.position);
+    scene.add(sunGlow);
 
     composer=new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene,camera));
@@ -196,16 +205,20 @@ function init(){
 }
 
 function makeStars(){
-    const n=12000,pos=new Float32Array(n*3);
+    const n=15000,pos=new Float32Array(n*3),cols=new Float32Array(n*3);
+    const cGen=new THREE.Color();
     for(let i=0;i<n;i++){
         const th=Math.random()*Math.PI*2,ph=Math.acos(Math.random()*2-1),r=1500+Math.random()*2000;
         pos[i*3]=r*Math.sin(ph)*Math.cos(th);
         pos[i*3+1]=r*Math.sin(ph)*Math.sin(th);
         pos[i*3+2]=r*Math.cos(ph);
+        cGen.setHSL(Math.random()>0.5?0.6:0.1, Math.random()*0.4, Math.random()*0.4+0.6);
+        cols[i*3]=cGen.r;cols[i*3+1]=cGen.g;cols[i*3+2]=cGen.b;
     }
     const g=new THREE.BufferGeometry();
     g.setAttribute('position',new THREE.BufferAttribute(pos,3));
-    scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xffffff,size:0.5,transparent:true,opacity:0.65})));
+    g.setAttribute('color',new THREE.BufferAttribute(cols,3));
+    scene.add(new THREE.Points(g,new THREE.PointsMaterial({size:0.8,vertexColors:true,transparent:true,opacity:0.85})));
 }
 
 function loadAll(){
@@ -231,8 +244,8 @@ function loadAll(){
 function build(){
     // Moon body
     scene.add(new THREE.Mesh(
-        new THREE.SphereGeometry(R-0.5,64,64),
-        new THREE.MeshStandardMaterial({color:0x151518,roughness:0.95,metalness:0})
+        new THREE.SphereGeometry(R-0.6,64,64),
+        new THREE.MeshStandardMaterial({color:0x121216,roughness:1.0,metalness:0,side:THREE.DoubleSide})
     ));
 
     // South pole cap
@@ -276,7 +289,7 @@ function buildCap(){
     }
     for(let iy=0;iy<SEG;iy++)for(let ix=0;ix<SEG;ix++){
         const a=iy*(SEG+1)+ix,b=a+1,c=a+(SEG+1),d=c+1;
-        indices.push(a,c,b,b,c,d);
+        indices.push(a,b,c, b,d,c); // Flipped winding order so texture faces outwards
     }
 
     capGeo=new THREE.BufferGeometry();
@@ -289,7 +302,7 @@ function buildCap(){
     cap=new THREE.Mesh(capGeo,new THREE.MeshStandardMaterial({
         map:tex.realistic,normalMap:tex.normal||null,
         normalScale:new THREE.Vector2(1.5,1.5),
-        roughness:0.88,metalness:0.02,side:THREE.FrontSide
+        roughness:0.85,metalness:0.05,side:THREE.DoubleSide
     }));
     scene.add(cap);
 }
@@ -463,6 +476,10 @@ function tick(){
         el.style.left=((wp.x*.5+.5)*innerWidth)+'px';
         el.style.top=((-wp.y*.5+.5)*innerHeight)+'px';
     });
+
+    const alt = Math.max(0, Math.round(camera.position.length() - R));
+    const altEl = document.getElementById('iAlt');
+    if (altEl) altEl.textContent = alt + ' km';
 
     // Dynamic near plane: when close to surface, tighten near clip to avoid z-fighting
     const distToCenter=camera.position.length();
