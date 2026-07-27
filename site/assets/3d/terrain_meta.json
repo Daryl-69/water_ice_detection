@@ -6,6 +6,7 @@
   "pixel_size_m": 149.4,
   "total_width_km": 319.9,
   "total_height_km": 305.9,
+  "source": "LROC WAC South Pole Summer Mosaic (128 ppd) + LOLA DEM",
   "craters": [
     {
       "name": "Shackleton",
