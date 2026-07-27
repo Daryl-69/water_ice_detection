@@ -1,0 +1,35 @@
+{
+  "dem_min_m": -2749.11083984375,
+  "dem_max_m": 570.0083618164062,
+  "dem_range_m": 3319.1192016601562,
+  "grid_size": 1024,
+  "pixel_size_m": 298.8,
+  "total_width_km": 319.9,
+  "total_height_km": 305.9,
+  "craters": [
+    {
+      "name": "Faustini",
+      "px": 706,
+      "py": 563,
+      "radius_km": 39
+    },
+    {
+      "name": "Shoemaker",
+      "px": 563,
+      "py": 665,
+      "radius_km": 51
+    },
+    {
+      "name": "Haworth",
+      "px": 430,
+      "py": 512,
+      "radius_km": 28
+    },
+    {
+      "name": "Shackleton",
+      "px": 542,
+      "py": 327,
+      "radius_km": 11
+    }
+  ]
+}

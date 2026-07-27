@@ -3,559 +3,532 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lunar Ice Prospector — 3D Terrain</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <title>Lunar South Pole — 3D Terrain Explorer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { height: 100%; overflow: hidden; font-family: 'Inter', sans-serif; background: #000; color: #e8eaf0; }
+        html, body { height: 100%; overflow: hidden; font-family: 'Inter', sans-serif; background: #000; color: #e0e2ec; }
+        #canvas3d { width: 100vw; height: 100vh; display: block; cursor: crosshair; }
 
-        #canvas3d { width: 100%; height: 100%; display: block; }
-
-        /* ── HUD Overlay ── */
-        .hud { position: fixed; z-index: 10; pointer-events: none; }
-        .hud > * { pointer-events: auto; }
-
-        /* Top-left: title */
-        .hud-title {
-            position: fixed; top: 20px; left: 24px;
-            z-index: 10;
-        }
-        .hud-title h1 {
-            font-size: 20px; font-weight: 700; letter-spacing: -0.02em;
-            background: linear-gradient(135deg, #e8eaf0, #00d4ff);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-        .hud-title .sub { font-size: 11px; color: #555875; margin-top: 2px; }
-
-        /* Top-right: controls */
-        .hud-controls {
-            position: fixed; top: 20px; right: 24px;
-            display: flex; flex-direction: column; gap: 6px;
-            z-index: 10;
-        }
-        .ctrl-btn {
-            padding: 8px 16px; border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(10, 10, 30, 0.85);
-            color: #8b8fa8; font-size: 12px; font-weight: 500;
-            cursor: pointer; transition: all 0.2s;
-            font-family: inherit; backdrop-filter: blur(12px);
-            text-align: left;
-        }
-        .ctrl-btn:hover { border-color: rgba(0,212,255,0.3); color: #e8eaf0; }
-        .ctrl-btn.active { border-color: rgba(0,212,255,0.4); color: #00d4ff; background: rgba(0,212,255,0.08); }
-
-        /* Bottom-left: info panel */
-        .hud-info {
-            position: fixed; bottom: 20px; left: 24px;
-            padding: 14px 18px; border-radius: 10px;
-            background: rgba(10, 10, 30, 0.85);
-            border: 1px solid rgba(255,255,255,0.06);
-            backdrop-filter: blur(12px);
-            z-index: 10; min-width: 220px;
-        }
-        .hud-info .info-row {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 3px 0; font-size: 12px;
-        }
-        .info-row .label { color: #555875; }
-        .info-row .value { font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: 12px; }
-
-        /* Bottom-center: exaggeration slider */
-        .hud-slider {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            display: flex; align-items: center; gap: 12px;
-            padding: 10px 18px; border-radius: 10px;
-            background: rgba(10, 10, 30, 0.85);
-            border: 1px solid rgba(255,255,255,0.06);
-            backdrop-filter: blur(12px);
-            z-index: 10;
-        }
-        .hud-slider label { font-size: 11px; color: #8b8fa8; white-space: nowrap; }
-        .hud-slider input[type=range] {
-            width: 140px; height: 3px; appearance: none;
-            background: rgba(255,255,255,0.1); border-radius: 2px; outline: none;
-        }
-        .hud-slider input[type=range]::-webkit-slider-thumb {
-            appearance: none; width: 14px; height: 14px; border-radius: 50%;
-            background: #00d4ff; cursor: pointer;
-            box-shadow: 0 0 10px rgba(0,212,255,0.5);
-        }
-        .hud-slider .slider-val {
-            font-family: 'JetBrains Mono', monospace; font-size: 12px;
-            color: #00d4ff; min-width: 28px; text-align: right;
-        }
-
-        /* Bottom-right: back button */
-        .hud-back {
-            position: fixed; bottom: 20px; right: 24px; z-index: 10;
-        }
-        .hud-back a {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 8px 16px; border-radius: 8px;
-            background: rgba(10, 10, 30, 0.85);
-            border: 1px solid rgba(255,255,255,0.08);
-            color: #8b8fa8; text-decoration: none;
-            font-size: 12px; font-weight: 500;
-            backdrop-filter: blur(12px); transition: all 0.2s;
-        }
-        .hud-back a:hover { border-color: rgba(0,212,255,0.3); color: #00d4ff; }
-
-        /* Loading overlay */
-        .loading-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: #06060f; display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            z-index: 1000; transition: opacity 0.8s;
-        }
-        .loading-overlay.hidden { opacity: 0; pointer-events: none; }
-        .loading-spinner {
-            width: 50px; height: 50px; border: 3px solid rgba(0,212,255,0.1);
-            border-top-color: #00d4ff; border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        .loading-text { margin-top: 16px; font-size: 13px; color: #555875; }
-        .loading-pct { font-family: 'JetBrains Mono', monospace; color: #00d4ff; font-size: 18px; margin-top: 8px; }
+        /* ── Loading ── */
+        .loading { position: fixed; inset: 0; background: #020208; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; transition: opacity 1s ease; }
+        .loading.done { opacity: 0; pointer-events: none; }
+        .ld-ring { width: 48px; height: 48px; border: 3px solid rgba(0,212,255,0.1); border-top-color: #00d4ff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        .ld-text { margin-top: 14px; font-size: 13px; color: #555875; letter-spacing: 0.02em; }
+        .ld-pct { font-family: 'JetBrains Mono', monospace; color: #00d4ff; font-size: 20px; margin-top: 6px; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Crater labels */
-        .crater-label {
-            position: absolute; pointer-events: none;
-            font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7);
-            text-shadow: 0 0 8px rgba(0,0,0,0.8), 0 0 20px rgba(0,0,0,0.5);
-            white-space: nowrap; transform: translate(-50%, -50%);
-            letter-spacing: 0.05em; text-transform: uppercase;
+        /* ── HUD shared ── */
+        .hud-panel {
+            position: fixed; z-index: 100;
+            background: rgba(6, 6, 15, 0.88);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px; backdrop-filter: blur(16px);
         }
+
+        /* ── Title ── */
+        .hud-title { top: 16px; left: 18px; padding: 10px 16px; }
+        .hud-title h1 { font-size: 16px; font-weight: 700; background: linear-gradient(135deg, #ccc, #00d4ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hud-title .sub { font-size: 10px; color: #4a4e6a; margin-top: 2px; }
+
+        /* ── Controls ── */
+        .hud-ctrl { top: 16px; right: 18px; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+        .cb { padding: 7px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); background: transparent; color: #7a7e98; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: inherit; text-align: left; }
+        .cb:hover { background: rgba(255,255,255,0.04); color: #c0c4d8; }
+        .cb.on { border-color: rgba(0,212,255,0.3); color: #00d4ff; background: rgba(0,212,255,0.06); }
+
+        /* ── Info / Pixel popup ── */
+        .hud-info { bottom: 16px; left: 18px; padding: 12px 16px; min-width: 200px; }
+        .info-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 11px; }
+        .info-row .lbl { color: #4a4e6a; }
+        .info-row .val { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; }
+
+        .hud-pixel { bottom: 16px; right: 18px; padding: 14px 18px; min-width: 240px; max-width: 280px; transform: translateY(10px); opacity: 0; transition: all 0.25s ease; pointer-events: none; }
+        .hud-pixel.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        .px-title { font-size: 10px; font-weight: 600; color: #555875; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+        .px-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        .px-row:last-child { border-bottom: none; }
+        .px-row .lbl { color: #7a7e98; }
+        .px-row .val { font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+        .px-bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.06); margin-top: 4px; overflow: hidden; }
+        .px-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+        .badge { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+        .badge-ice { background: rgba(0,212,255,0.15); color: #00d4ff; }
+        .badge-no { background: rgba(255,255,255,0.05); color: #555; }
+        .badge-psr { background: rgba(26,95,180,0.2); color: #4a9eff; }
+        .badge-sun { background: rgba(243,156,18,0.15); color: #f39c12; }
+        .badge-safe { background: rgba(39,174,96,0.15); color: #27ae60; }
+        .badge-warn { background: rgba(243,156,18,0.15); color: #f39c12; }
+        .badge-danger { background: rgba(231,76,60,0.15); color: #e74c3c; }
+        .px-close { position: absolute; top: 8px; right: 10px; background: none; border: none; color: #555; cursor: pointer; font-size: 14px; }
+
+        /* ── Slider ── */
+        .hud-slider { bottom: 16px; left: 50%; transform: translateX(-50%); padding: 8px 16px; display: flex; align-items: center; gap: 10px; }
+        .hud-slider label { font-size: 10px; color: #555875; white-space: nowrap; }
+        .hud-slider input[type=range] { width: 120px; height: 3px; appearance: none; background: rgba(255,255,255,0.08); border-radius: 2px; }
+        .hud-slider input[type=range]::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #00d4ff; cursor: pointer; box-shadow: 0 0 8px rgba(0,212,255,0.4); }
+        .sv { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #00d4ff; min-width: 24px; text-align: right; }
+
+        /* ── Marker pin ── */
+        .pin-3d { position: absolute; pointer-events: none; z-index: 50; transform: translate(-50%, -100%); transition: opacity 0.2s; }
+        .pin-dot { width: 10px; height: 10px; border-radius: 50%; background: #00d4ff; box-shadow: 0 0 12px rgba(0,212,255,0.6), 0 0 30px rgba(0,212,255,0.2); margin: 0 auto; }
+        .pin-line { width: 2px; height: 20px; background: linear-gradient(to bottom, #00d4ff, transparent); margin: 0 auto; }
+
+        /* ── Back ── */
+        .hud-back { top: 16px; left: 50%; transform: translateX(-50%); padding: 0; }
+        .hud-back a { display: block; padding: 8px 20px; color: #7a7e98; text-decoration: none; font-size: 11px; font-weight: 500; transition: color 0.15s; }
+        .hud-back a:hover { color: #00d4ff; }
+
+        /* ── Crater labels ── */
+        .crater-lbl { position: absolute; pointer-events: none; font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.55); text-shadow: 0 1px 6px rgba(0,0,0,0.9); white-space: nowrap; transform: translate(-50%, -50%); letter-spacing: 0.06em; text-transform: uppercase; z-index: 40; }
+
+        /* ── Keybinds hint ── */
+        .keyhint { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #3a3e58; z-index: 10; text-align: center; transition: opacity 2s; }
     </style>
 </head>
 <body>
-    <!-- Loading -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Loading terrain data...</div>
-        <div class="loading-pct" id="loadPct">0%</div>
+    <div class="loading" id="loader">
+        <div class="ld-ring"></div>
+        <div class="ld-text">Building terrain mesh...</div>
+        <div class="ld-pct" id="ldPct">0%</div>
     </div>
 
-    <!-- 3D Canvas -->
     <canvas id="canvas3d"></canvas>
+    <div id="labels"></div>
+    <div class="pin-3d" id="pin" style="opacity:0;"><div class="pin-dot"></div><div class="pin-line"></div></div>
 
-    <!-- Crater labels container -->
-    <div id="craterLabels"></div>
-
-    <!-- HUD: Title -->
-    <div class="hud-title">
-        <h1>🌑 Lunar South Pole — 3D Terrain</h1>
-        <div class="sub">Chandrayaan-2 DFSAR + NASA LOLA DEM • Drag to orbit, scroll to zoom</div>
+    <!-- HUD -->
+    <div class="hud-panel hud-title">
+        <h1>🌑 Lunar South Pole — 3D Explorer</h1>
+        <div class="sub">WASD to fly • Right-drag to pan • Scroll to zoom • Click terrain for data</div>
     </div>
 
-    <!-- HUD: Texture controls -->
-    <div class="hud-controls">
-        <button class="ctrl-btn active" data-texture="combined" id="texCombined">🌑 Terrain + Ice</button>
-        <button class="ctrl-btn" data-texture="cpr" id="texCPR">📡 CPR Radar</button>
-        <button class="ctrl-btn" data-texture="ice" id="texIce">🧊 Ice Probability</button>
-        <button class="ctrl-btn" data-texture="slope" id="texSlope">⛰️ Slope Safety</button>
-        <button class="ctrl-btn" id="toggleWireframe">◻ Wireframe</button>
-        <button class="ctrl-btn" id="toggleBloom">✦ Glow: ON</button>
-        <button class="ctrl-btn" id="autoRotate">↻ Auto-Rotate</button>
+    <div class="hud-panel hud-ctrl" id="ctrlPanel">
+        <button class="cb on" data-tex="realistic">🌑 Realistic Surface</button>
+        <button class="cb" data-tex="ice_glow">🧊 Ice Glow (Sci-fi)</button>
+        <button class="cb" data-tex="cpr">📡 CPR Radar</button>
+        <button class="cb" id="btnNormals">🗺️ Normal Map</button>
+        <button class="cb" id="btnWire">◻ Wireframe</button>
+        <button class="cb" id="btnRotate">↻ Auto-Rotate</button>
     </div>
 
-    <!-- HUD: Vertical exaggeration -->
-    <div class="hud-slider">
-        <label>Vertical Scale</label>
-        <input type="range" id="exagSlider" min="1" max="20" value="5" step="0.5">
-        <span class="slider-val" id="exagVal">5×</span>
+    <div class="hud-panel hud-slider">
+        <label>Vertical</label>
+        <input type="range" id="exag" min="1" max="25" value="6" step="0.5">
+        <span class="sv" id="exagV">6×</span>
     </div>
 
-    <!-- HUD: Info -->
-    <div class="hud-info" id="hudInfo">
-        <div class="info-row"><span class="label">Elevation Range</span><span class="value" id="infoElev">—</span></div>
-        <div class="info-row"><span class="label">Coverage</span><span class="value" id="infoCov">—</span></div>
-        <div class="info-row"><span class="label">Camera Alt</span><span class="value" id="infoCam">—</span></div>
-        <div class="info-row"><span class="label">Vertices</span><span class="value" id="infoVerts">—</span></div>
+    <div class="hud-panel hud-info" id="infoPanel">
+        <div class="info-row"><span class="lbl">Elevation</span><span class="val" id="iElev">—</span></div>
+        <div class="info-row"><span class="lbl">Coverage</span><span class="val" id="iCov">—</span></div>
+        <div class="info-row"><span class="lbl">Camera</span><span class="val" id="iCam">—</span></div>
+        <div class="info-row"><span class="lbl">Mesh</span><span class="val" id="iMesh">—</span></div>
     </div>
 
-    <!-- HUD: Back link -->
-    <div class="hud-back">
-        <a href="index.html">← Back to 2D Dashboard</a>
+    <div class="hud-panel hud-pixel" id="pixelPanel">
+        <button class="px-close" id="pxClose">✕</button>
+        <div class="px-title">Terrain Analysis</div>
+        <div id="pxBody"></div>
     </div>
 
-    <!-- Three.js + OrbitControls from CDN -->
+    <div class="hud-panel hud-back"><a href="index.html">← 2D Dashboard</a></div>
+
+    <div class="keyhint" id="keyhint">WASD — fly &nbsp;|&nbsp; Q/E — up/down &nbsp;|&nbsp; Click — inspect &nbsp;|&nbsp; Esc — close</div>
+
     <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
-        }
-    }
+    { "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+    }}
     </script>
-
     <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
-    // ── Config ──
-    const ASSETS = 'assets/3d/';
-    const TEXTURE_FILES = {
-        combined: 'texture_combined.png',
-        cpr: 'texture_cpr.png',
-        ice: 'texture_ice.png',
-        slope: 'texture_slope.png'
-    };
-
-    let scene, camera, renderer, controls, composer, bloomPass;
-    let terrain, terrainGeo;
-    let textures = {};
-    let meta = {};
-    let verticalExag = 5;
-    let heightData = null;
-    let wireframeOn = false;
-    let bloomOn = true;
-    let craterLabels = [];
+    const A = 'assets/3d/';
+    const PLANE = 800;
+    let renderer, scene, camera, controls, composer, bloomPass;
+    let mesh, geo, heightImg, dataCanvas, dataCtx;
+    let texMap = {}, meta = {};
+    let exag = 6, useBloom = false;
+    let hData = null;
     let loaded = 0;
-    const totalAssets = 6; // heightmap + 4 textures + meta
+    const TOTAL = 7;
+    const keys = {};
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let pinWorld = null;
 
-    // ── Init Three.js ──
-    function init() {
-        const canvas = document.getElementById('canvas3d');
-
-        // Renderer
-        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // ── Renderer ──
+    function setup() {
+        const c = document.getElementById('canvas3d');
+        renderer = new THREE.WebGLRenderer({ canvas: c, antialias: true });
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.2;
+        renderer.toneMappingExposure = 1.0;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-        // Scene
         scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x020208);
-        scene.fog = new THREE.FogExp2(0x020208, 0.00015);
+        scene.background = new THREE.Color(0x010108);
 
-        // Camera
-        camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 10000);
-        camera.position.set(0, 400, 500);
+        camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 8000);
+        camera.position.set(-100, 250, 350);
 
-        // Controls
-        controls = new OrbitControls(camera, canvas);
+        // OrbitControls: NO polar angle limit so you can fly inside craters
+        controls = new OrbitControls(camera, c);
         controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.minDistance = 50;
-        controls.maxDistance = 2000;
-        controls.maxPolarAngle = Math.PI * 0.48;
+        controls.dampingFactor = 0.06;
+        controls.minDistance = 1;      // get VERY close
+        controls.maxDistance = 3000;
+        controls.maxPolarAngle = Math.PI; // no limit — full freedom
         controls.target.set(0, 0, 0);
+        controls.screenSpacePanning = true;
+        controls.panSpeed = 1.5;
 
-        // Lights
-        const ambientLight = new THREE.AmbientLight(0x334466, 0.4);
-        scene.add(ambientLight);
+        // Lighting — harsh like the real moon (no atmosphere)
+        scene.add(new THREE.AmbientLight(0x223344, 0.25));
 
-        // Low-angle directional (like sun at horizon — dramatic crater shadows)
-        const sunLight = new THREE.DirectionalLight(0xffeedd, 1.2);
-        sunLight.position.set(300, 80, -200);
-        scene.add(sunLight);
+        const sun = new THREE.DirectionalLight(0xfff5e0, 1.8);
+        sun.position.set(400, 120, -300);
+        sun.castShadow = true;
+        sun.shadow.mapSize.set(2048, 2048);
+        sun.shadow.camera.near = 10;
+        sun.shadow.camera.far = 1500;
+        sun.shadow.camera.left = -600;
+        sun.shadow.camera.right = 600;
+        sun.shadow.camera.top = 600;
+        sun.shadow.camera.bottom = -600;
+        scene.add(sun);
 
-        // Fill light from opposite side
-        const fillLight = new THREE.DirectionalLight(0x4488cc, 0.3);
-        fillLight.position.set(-200, 100, 300);
-        scene.add(fillLight);
+        const fill = new THREE.DirectionalLight(0x334466, 0.15);
+        fill.position.set(-300, 60, 200);
+        scene.add(fill);
 
-        // Subtle rim light from below
-        const rimLight = new THREE.DirectionalLight(0x0044ff, 0.15);
-        rimLight.position.set(0, -100, 0);
-        scene.add(rimLight);
-
-        // Stars
-        createStars();
-
-        // Post-processing (bloom for ice glow)
+        // Post-processing
         composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
-        bloomPass = new UnrealBloomPass(
-            new THREE.Vector2(window.innerWidth, window.innerHeight),
-            0.6, 0.4, 0.85
-        );
+        bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.3, 0.9);
+        bloomPass.enabled = false;
         composer.addPass(bloomPass);
 
-        // Resize handler
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
+        makeStars();
+        loadAll();
+        bindUI();
+        tick();
+
+        addEventListener('resize', () => {
+            camera.aspect = innerWidth / innerHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            composer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setSize(innerWidth, innerHeight);
+            composer.setSize(innerWidth, innerHeight);
         });
 
-        // Load assets
-        loadAssets();
-
-        // UI
-        setupUI();
-
-        // Animate
-        animate();
+        // Fade keyhint
+        setTimeout(() => { document.getElementById('keyhint').style.opacity = '0'; }, 8000);
     }
 
     // ── Stars ──
-    function createStars() {
-        const starGeo = new THREE.BufferGeometry();
-        const positions = [];
-        const sizes = [];
-        for (let i = 0; i < 6000; i++) {
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.acos(Math.random() * 2 - 1);
-            const r = 3000 + Math.random() * 2000;
-            positions.push(
-                r * Math.sin(phi) * Math.cos(theta),
-                r * Math.sin(phi) * Math.sin(theta),
-                r * Math.cos(phi)
-            );
-            sizes.push(Math.random() * 2 + 0.5);
+    function makeStars() {
+        const n = 8000;
+        const pos = new Float32Array(n * 3);
+        for (let i = 0; i < n; i++) {
+            const th = Math.random() * Math.PI * 2;
+            const ph = Math.acos(Math.random() * 2 - 1);
+            const r = 2500 + Math.random() * 2500;
+            pos[i*3]   = r * Math.sin(ph) * Math.cos(th);
+            pos[i*3+1] = r * Math.sin(ph) * Math.sin(th);
+            pos[i*3+2] = r * Math.cos(ph);
         }
-        starGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-        starGeo.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
-
-        const starMat = new THREE.PointsMaterial({
-            color: 0xffffff,
-            size: 1.5,
-            sizeAttenuation: true,
-            transparent: true,
-            opacity: 0.8
-        });
-        scene.add(new THREE.Points(starGeo, starMat));
+        const sg = new THREE.BufferGeometry();
+        sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 0.8, sizeAttenuation: true, transparent: true, opacity: 0.7 })));
     }
 
     // ── Load Assets ──
-    function loadAssets() {
-        const loader = new THREE.TextureLoader();
-        const pctEl = document.getElementById('loadPct');
+    function loadAll() {
+        const tl = new THREE.TextureLoader();
+        const bump = () => { loaded++; document.getElementById('ldPct').textContent = Math.round(loaded/TOTAL*100) + '%'; if (loaded >= TOTAL) build(); };
 
-        const onProgress = () => {
-            loaded++;
-            pctEl.textContent = Math.round(loaded / totalAssets * 100) + '%';
-            if (loaded >= totalAssets) {
-                buildTerrain();
-                document.getElementById('loadingOverlay').classList.add('hidden');
-            }
-        };
-
-        // Load heightmap
+        // Heightmap (read pixel data)
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
-            const cv = document.createElement('canvas');
-            cv.width = img.naturalWidth;
-            cv.height = img.naturalHeight;
-            const c = cv.getContext('2d');
-            c.drawImage(img, 0, 0);
-            heightData = c.getImageData(0, 0, cv.width, cv.height).data;
-            onProgress();
+            const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+            const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0);
+            hData = cx.getImageData(0, 0, cv.width, cv.height).data;
+            heightImg = img;
+            bump();
         };
-        img.src = ASSETS + 'heightmap_8bit.png';
+        img.src = A + 'heightmap_8bit.png';
 
-        // Load textures
-        for (const [key, file] of Object.entries(TEXTURE_FILES)) {
-            loader.load(ASSETS + file, (tex) => {
-                tex.colorSpace = THREE.SRGBColorSpace;
-                tex.minFilter = THREE.LinearMipMapLinearFilter;
-                tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-                textures[key] = tex;
-                onProgress();
-            });
+        // Data texture (for click-inspect)
+        const dimg = new Image();
+        dimg.crossOrigin = 'anonymous';
+        dimg.onload = () => {
+            dataCanvas = document.createElement('canvas'); dataCanvas.width = dimg.width; dataCanvas.height = dimg.height;
+            dataCtx = dataCanvas.getContext('2d'); dataCtx.drawImage(dimg, 0, 0);
+            bump();
+        };
+        dimg.src = A + 'data_texture.png';
+
+        // Visual textures
+        const texFiles = { realistic: 'texture_realistic.png', ice_glow: 'texture_ice_glow.png', cpr: 'texture_cpr.png' };
+        for (const [k, f] of Object.entries(texFiles)) {
+            tl.load(A + f, t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); texMap[k] = t; bump(); });
         }
 
-        // Load metadata
-        fetch(ASSETS + 'terrain_meta.json')
-            .then(r => r.json())
-            .then(d => { meta = d; onProgress(); })
-            .catch(() => { meta = { dem_min_m: -6000, dem_max_m: -1000, dem_range_m: 5000, grid_size: 1024 }; onProgress(); });
+        // Normal map
+        tl.load(A + 'normalmap.png', t => { t.colorSpace = THREE.LinearSRGBColorSpace; texMap.normal = t; bump(); });
+
+        // Meta
+        fetch(A + 'terrain_meta.json').then(r => r.json()).then(d => { meta = d; bump(); }).catch(bump);
     }
 
     // ── Build Terrain ──
-    function buildTerrain() {
-        const size = meta.grid_size || 1024;
-        const segments = Math.min(size - 1, 1023);
-        const planeSize = 800;
-
-        terrainGeo = new THREE.PlaneGeometry(planeSize, planeSize, segments, segments);
-        terrainGeo.rotateX(-Math.PI / 2);
-
-        // Apply heightmap displacement
-        const positions = terrainGeo.attributes.position;
-        const heightScale = (meta.dem_range_m || 5000) / 255;
-
-        for (let i = 0; i < positions.count; i++) {
-            const u = (i % (segments + 1)) / segments;
-            const v = Math.floor(i / (segments + 1)) / segments;
-            const px = Math.floor(u * (size - 1));
-            const py = Math.floor(v * (size - 1));
-            const idx = (py * size + px) * 4; // RGBA
-            const h = heightData[idx] || 0;
-            const elevation = (h / 255) * verticalExag;
-            positions.setY(i, elevation * 0.5);
-        }
-
-        terrainGeo.computeVertexNormals();
+    function build() {
+        const sz = meta.grid_size || 1024;
+        const seg = Math.min(sz - 1, 1023);
+        geo = new THREE.PlaneGeometry(PLANE, PLANE, seg, seg);
+        geo.rotateX(-Math.PI / 2);
+        applyHeights();
 
         const mat = new THREE.MeshStandardMaterial({
-            map: textures.combined || null,
-            roughness: 0.85,
-            metalness: 0.05,
+            map: texMap.realistic,
+            normalMap: texMap.normal || null,
+            normalScale: new THREE.Vector2(1.5, 1.5),
+            roughness: 0.92,
+            metalness: 0.02,
             flatShading: false,
             side: THREE.DoubleSide
         });
 
-        terrain = new THREE.Mesh(terrainGeo, mat);
-        scene.add(terrain);
+        mesh = new THREE.Mesh(geo, mat);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        scene.add(mesh);
 
-        // Update info
-        document.getElementById('infoElev').textContent =
-            `${Math.round(meta.dem_min_m)}m → ${Math.round(meta.dem_max_m)}m`;
-        document.getElementById('infoCov').textContent =
-            `${meta.total_width_km || '—'} × ${meta.total_height_km || '—'} km`;
-        document.getElementById('infoVerts').textContent =
-            `${(positions.count / 1000).toFixed(0)}K`;
+        // Info
+        document.getElementById('iElev').textContent = `${Math.round(meta.dem_min_m)} → ${Math.round(meta.dem_max_m)} m`;
+        document.getElementById('iCov').textContent = `${meta.total_width_km} × ${meta.total_height_km} km`;
+        document.getElementById('iMesh').textContent = `${(geo.attributes.position.count/1000).toFixed(0)}K verts`;
 
-        // Create crater labels
+        // Labels
         if (meta.craters) {
-            const labelsDiv = document.getElementById('craterLabels');
+            const ld = document.getElementById('labels');
             meta.craters.forEach(c => {
                 const el = document.createElement('div');
-                el.className = 'crater-label';
+                el.className = 'crater-lbl';
                 el.textContent = c.name;
-                el.dataset.px = c.px;
-                el.dataset.py = c.py;
-                labelsDiv.appendChild(el);
-                craterLabels.push(el);
+                el.dataset.px = c.px; el.dataset.py = c.py;
+                ld.appendChild(el);
             });
         }
+
+        document.getElementById('loader').classList.add('done');
     }
 
-    // ── Update Heights ──
-    function updateHeights() {
-        if (!terrainGeo || !heightData) return;
-        const positions = terrainGeo.attributes.position;
-        const size = meta.grid_size || 1024;
-        const segments = Math.min(size - 1, 1023);
-
-        for (let i = 0; i < positions.count; i++) {
-            const u = (i % (segments + 1)) / segments;
-            const v = Math.floor(i / (segments + 1)) / segments;
-            const px = Math.floor(u * (size - 1));
-            const py = Math.floor(v * (size - 1));
-            const idx = (py * size + px) * 4;
-            const h = heightData[idx] || 0;
-            positions.setY(i, (h / 255) * verticalExag * 0.5);
+    function applyHeights() {
+        if (!hData || !geo) return;
+        const pos = geo.attributes.position;
+        const sz = meta.grid_size || 1024;
+        const seg = Math.min(sz - 1, 1023);
+        for (let i = 0; i < pos.count; i++) {
+            const u = (i % (seg + 1)) / seg;
+            const v = Math.floor(i / (seg + 1)) / seg;
+            const px = Math.min(Math.floor(u * (sz - 1)), sz - 1);
+            const py = Math.min(Math.floor(v * (sz - 1)), sz - 1);
+            const h = hData[(py * sz + px) * 4] / 255;
+            pos.setY(i, h * exag * 0.5);
         }
-
-        positions.needsUpdate = true;
-        terrainGeo.computeVertexNormals();
+        pos.needsUpdate = true;
+        geo.computeVertexNormals();
     }
 
-    // ── Update Crater Labels ──
-    function updateLabels() {
-        if (!meta.craters || !terrain) return;
-        const size = meta.grid_size || 1024;
+    // ── Click-to-Inspect ──
+    function onTerrainClick(e) {
+        if (!mesh || !dataCtx) return;
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
-        craterLabels.forEach((el, i) => {
-            const c = meta.craters[i];
-            const u = c.px / size;
-            const v = c.py / size;
-            const x = (u - 0.5) * 800;
-            const z = (v - 0.5) * 800;
+        raycaster.setFromCamera(mouse, camera);
+        const hits = raycaster.intersectObject(mesh);
+        if (hits.length === 0) return;
 
-            const pos = new THREE.Vector3(x, 30, z);
-            pos.project(camera);
+        const pt = hits[0].point;
+        const uv = hits[0].uv;
+        if (!uv) return;
 
-            if (pos.z > 1) {
-                el.style.display = 'none';
-                return;
-            }
+        pinWorld = pt.clone();
 
-            el.style.display = '';
-            const screenX = (pos.x * 0.5 + 0.5) * window.innerWidth;
-            const screenY = (-pos.y * 0.5 + 0.5) * window.innerHeight;
-            el.style.left = screenX + 'px';
-            el.style.top = screenY + 'px';
-        });
+        // Read data texture
+        const sz = meta.grid_size || 1024;
+        const dx = Math.floor(uv.x * (sz - 1));
+        const dy = Math.floor((1 - uv.y) * (sz - 1));
+        const pixel = dataCtx.getImageData(dx, dy, 1, 1).data;
+
+        const cpr = (pixel[0] / 255) * 3;
+        const iceProb = pixel[1] / 255;
+        const slope = (pixel[2] / 255) * 45;
+        const inPSR = pixel[3] > 128;
+
+        // Read elevation from heightmap
+        const hVal = hData ? hData[(dy * sz + dx) * 4] / 255 : 0;
+        const elevM = Math.round(meta.dem_min_m + hVal * (meta.dem_range_m || 3000));
+
+        // Build popup
+        const icePct = (iceProb * 100).toFixed(1);
+        const iceBadge = iceProb > 0.5 ? `<span class="badge badge-ice">ICE LIKELY</span>` : iceProb > 0.2 ? `<span class="badge badge-ice" style="opacity:0.6">Possible</span>` : `<span class="badge badge-no">Unlikely</span>`;
+        const psrBadge = inPSR ? `<span class="badge badge-psr">Shadow</span>` : `<span class="badge badge-sun">Sunlit</span>`;
+        const slopeBadge = slope < 15 ? `<span class="badge badge-safe">Safe</span>` : slope < 25 ? `<span class="badge badge-warn">Caution</span>` : `<span class="badge badge-danger">Steep</span>`;
+
+        document.getElementById('pxBody').innerHTML = `
+            <div class="px-row"><span class="lbl">Ice Probability</span><span class="val">${icePct}% ${iceBadge}</span></div>
+            <div class="px-bar"><div class="px-bar-fill" style="width:${icePct}%; background: linear-gradient(90deg, #0066aa, #00d4ff);"></div></div>
+            <div class="px-row" style="margin-top:6px"><span class="lbl">CPR</span><span class="val">${cpr.toFixed(3)}</span></div>
+            <div class="px-bar"><div class="px-bar-fill" style="width:${Math.min(cpr/3*100,100).toFixed(0)}%; background: linear-gradient(90deg, #1a0533, #f0f921);"></div></div>
+            <div class="px-row" style="margin-top:6px"><span class="lbl">Slope</span><span class="val">${slope.toFixed(1)}° ${slopeBadge}</span></div>
+            <div class="px-row"><span class="lbl">Illumination</span><span class="val">${psrBadge}</span></div>
+            <div class="px-row"><span class="lbl">Elevation</span><span class="val">${elevM} m</span></div>
+            <div class="px-row"><span class="lbl">Pixel</span><span class="val" style="color:#4a4e6a">(${dx}, ${dy})</span></div>
+        `;
+        document.getElementById('pixelPanel').classList.add('show');
     }
 
-    // ── UI Setup ──
-    function setupUI() {
-        // Texture buttons
-        document.querySelectorAll('[data-texture]').forEach(btn => {
+    // ── WASD Flying ──
+    function handleKeys(dt) {
+        const speed = 120 * dt;
+        const dir = new THREE.Vector3();
+        camera.getWorldDirection(dir);
+        const right = new THREE.Vector3().crossVectors(dir, camera.up).normalize();
+
+        if (keys['w'] || keys['arrowup'])    { camera.position.addScaledVector(dir, speed); controls.target.addScaledVector(dir, speed); }
+        if (keys['s'] || keys['arrowdown'])  { camera.position.addScaledVector(dir, -speed); controls.target.addScaledVector(dir, -speed); }
+        if (keys['a'] || keys['arrowleft'])  { camera.position.addScaledVector(right, -speed); controls.target.addScaledVector(right, -speed); }
+        if (keys['d'] || keys['arrowright']) { camera.position.addScaledVector(right, speed); controls.target.addScaledVector(right, speed); }
+        if (keys['q'] || keys['shift'])      { camera.position.y -= speed; controls.target.y -= speed; }
+        if (keys['e'] || keys[' '])          { camera.position.y += speed; controls.target.y += speed; }
+    }
+
+    // ── UI Bindings ──
+    function bindUI() {
+        const c = document.getElementById('canvas3d');
+
+        // Texture switching
+        document.querySelectorAll('[data-tex]').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('[data-texture]').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                const key = btn.dataset.texture;
-                if (terrain && textures[key]) {
-                    terrain.material.map = textures[key];
-                    terrain.material.needsUpdate = true;
-                }
+                document.querySelectorAll('[data-tex]').forEach(b => b.classList.remove('on'));
+                btn.classList.add('on');
+                const k = btn.dataset.tex;
+                if (mesh && texMap[k]) { mesh.material.map = texMap[k]; mesh.material.needsUpdate = true; }
+                // Toggle bloom for ice glow texture
+                useBloom = k === 'ice_glow';
+                bloomPass.enabled = useBloom;
             });
         });
 
-        // Wireframe toggle
-        document.getElementById('toggleWireframe').addEventListener('click', function() {
-            wireframeOn = !wireframeOn;
-            if (terrain) terrain.material.wireframe = wireframeOn;
-            this.textContent = wireframeOn ? '◼ Solid' : '◻ Wireframe';
-            this.classList.toggle('active', wireframeOn);
+        // Normal map toggle
+        document.getElementById('btnNormals').addEventListener('click', function() {
+            this.classList.toggle('on');
+            if (mesh) {
+                mesh.material.normalMap = this.classList.contains('on') ? texMap.normal : null;
+                mesh.material.needsUpdate = true;
+            }
         });
+        document.getElementById('btnNormals').classList.add('on');
 
-        // Bloom toggle
-        document.getElementById('toggleBloom').addEventListener('click', function() {
-            bloomOn = !bloomOn;
-            bloomPass.enabled = bloomOn;
-            this.textContent = bloomOn ? '✦ Glow: ON' : '✦ Glow: OFF';
-            this.classList.toggle('active', bloomOn);
+        // Wireframe
+        document.getElementById('btnWire').addEventListener('click', function() {
+            this.classList.toggle('on');
+            if (mesh) mesh.material.wireframe = this.classList.contains('on');
         });
 
         // Auto-rotate
-        document.getElementById('autoRotate').addEventListener('click', function() {
-            controls.autoRotate = !controls.autoRotate;
-            controls.autoRotateSpeed = 0.5;
-            this.classList.toggle('active', controls.autoRotate);
+        document.getElementById('btnRotate').addEventListener('click', function() {
+            this.classList.toggle('on');
+            controls.autoRotate = this.classList.contains('on');
+            controls.autoRotateSpeed = 0.4;
         });
 
-        // Vertical exaggeration slider
-        const slider = document.getElementById('exagSlider');
-        const sliderVal = document.getElementById('exagVal');
-        slider.addEventListener('input', () => {
-            verticalExag = parseFloat(slider.value);
-            sliderVal.textContent = verticalExag + '×';
-            updateHeights();
+        // Exaggeration
+        const sl = document.getElementById('exag');
+        sl.addEventListener('input', () => {
+            exag = parseFloat(sl.value);
+            document.getElementById('exagV').textContent = exag + '×';
+            applyHeights();
+        });
+
+        // Click to inspect
+        let mouseDown = { x: 0, y: 0 };
+        c.addEventListener('mousedown', e => { mouseDown = { x: e.clientX, y: e.clientY }; });
+        c.addEventListener('mouseup', e => {
+            if (Math.abs(e.clientX - mouseDown.x) < 4 && Math.abs(e.clientY - mouseDown.y) < 4) {
+                onTerrainClick(e);
+            }
+        });
+
+        // Close popup
+        document.getElementById('pxClose').addEventListener('click', () => {
+            document.getElementById('pixelPanel').classList.remove('show');
+            document.getElementById('pin').style.opacity = '0';
+            pinWorld = null;
         });
 
         // Keyboard
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'r') controls.autoRotate = !controls.autoRotate;
-            if (e.key === 'w') { wireframeOn = !wireframeOn; if (terrain) terrain.material.wireframe = wireframeOn; }
-        });
+        addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; if (e.key === 'Escape') { document.getElementById('pixelPanel').classList.remove('show'); pinWorld = null; document.getElementById('pin').style.opacity = '0'; } });
+        addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
     }
 
-    // ── Animation Loop ──
-    function animate() {
-        requestAnimationFrame(animate);
+    // ── Animate ──
+    let lastT = 0;
+    function tick(t = 0) {
+        requestAnimationFrame(tick);
+        const dt = Math.min((t - lastT) / 1000, 0.05);
+        lastT = t;
+
+        handleKeys(dt);
         controls.update();
 
-        // Update camera altitude display
-        const camDist = camera.position.length();
-        document.getElementById('infoCam').textContent = Math.round(camDist) + ' units';
+        // Camera info
+        document.getElementById('iCam').textContent = `Alt ${Math.round(camera.position.y)} | Dist ${Math.round(camera.position.length())}`;
+
+        // Update pin
+        if (pinWorld) {
+            const p = pinWorld.clone().project(camera);
+            if (p.z < 1) {
+                const pin = document.getElementById('pin');
+                pin.style.left = ((p.x * 0.5 + 0.5) * innerWidth) + 'px';
+                pin.style.top = ((-p.y * 0.5 + 0.5) * innerHeight) + 'px';
+                pin.style.opacity = '1';
+            }
+        }
 
         // Update crater labels
-        updateLabels();
+        document.querySelectorAll('.crater-lbl').forEach(el => {
+            const sz = meta.grid_size || 1024;
+            const u = parseInt(el.dataset.px) / sz;
+            const v = parseInt(el.dataset.py) / sz;
+            const wx = (u - 0.5) * PLANE;
+            const wz = (v - 0.5) * PLANE;
+            const wp = new THREE.Vector3(wx, 20, wz).project(camera);
+            if (wp.z > 1) { el.style.display = 'none'; return; }
+            el.style.display = '';
+            el.style.left = ((wp.x * 0.5 + 0.5) * innerWidth) + 'px';
+            el.style.top = ((-wp.y * 0.5 + 0.5) * innerHeight) + 'px';
+            // Fade by distance
+            const d = camera.position.distanceTo(new THREE.Vector3(wx, 0, wz));
+            el.style.opacity = Math.max(0, Math.min(1, 1 - (d - 300) / 600));
+        });
 
-        // Render
-        if (bloomOn) {
-            composer.render();
-        } else {
-            renderer.render(scene, camera);
-        }
+        composer.render();
     }
 
-    // ── Start ──
-    init();
+    setup();
     </script>
 </body>
 </html>
