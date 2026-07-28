@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lunar South Pole — 3D Ice Map</title>
+    <title>Lunar South Pole — Real-Time 3D Orbital Simulation</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -21,7 +21,7 @@
         .p{position:fixed;z-index:100;background:rgba(4,4,12,.92);border:1px solid rgba(255,255,255,.04);border-radius:10px;backdrop-filter:blur(20px)}
 
         .p-title{top:16px;left:18px;padding:14px 20px}
-        .p-title h1{font-size:18px;font-weight:800;letter-spacing:-.02em;color:#e8eaf0}
+        .p-title h1{font-size:17px;font-weight:800;letter-spacing:-.02em;color:#e8eaf0}
         .p-title .sub{font-size:10px;color:#4a4e6a;margin-top:3px;line-height:1.4}
 
         .p-ctrl{top:16px;right:18px;padding:8px;display:flex;flex-direction:column;gap:4px}
@@ -29,9 +29,10 @@
         .btn:hover{background:rgba(255,255,255,.03);color:#b0b4c8}
         .btn.on{border-color:rgba(0,180,255,.3);color:#00b4ff;background:rgba(0,180,255,.06)}
 
-        .p-info{bottom:16px;left:18px;padding:12px 16px;min-width:220px}
+        .p-info{bottom:16px;left:18px;padding:12px 16px;min-width:240px}
         .ir{display:flex;justify-content:space-between;padding:2.5px 0;font-size:11px}
         .ir .l{color:#4a4e6a}.ir .v{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500}
+        .ir-sep{border-top:1px solid rgba(255,255,255,.03);margin:4px 0}
 
         .p-px{bottom:16px;right:18px;padding:16px 20px;min-width:260px;max-width:300px;transform:translateY(12px);opacity:0;transition:.3s ease;pointer-events:none}
         .p-px.show{transform:translateY(0);opacity:1;pointer-events:auto}
@@ -74,19 +75,25 @@
         .p-slider input[type=range]{width:100px;height:3px;appearance:none;background:rgba(255,255,255,.06);border-radius:2px}
         .p-slider input[type=range]::-webkit-slider-thumb{appearance:none;width:12px;height:12px;border-radius:50%;background:#00b4ff;cursor:pointer}
         .sv{font-family:'JetBrains Mono',monospace;font-size:11px;color:#00b4ff;min-width:24px}
+
+        /* Sun label */
+        .sun-lbl{position:absolute;pointer-events:none;z-index:30;font-size:9px;font-weight:600;color:rgba(255,220,100,.7);font-family:'JetBrains Mono',monospace;transform:translate(-50%,16px);text-shadow:0 0 10px rgba(255,200,50,.5)}
+        .earth-lbl{position:absolute;pointer-events:none;z-index:30;font-size:9px;font-weight:600;color:rgba(100,180,255,.7);font-family:'JetBrains Mono',monospace;transform:translate(-50%,16px);text-shadow:0 0 10px rgba(100,180,255,.5)}
     </style>
 </head>
 <body>
-<div class="loader" id="ld"><div class="ring"></div><p>Rendering lunar terrain...</p><div class="pct" id="ldp">0%</div></div>
+<div class="loader" id="ld"><div class="ring"></div><p>Rendering lunar terrain & orbital data...</p><div class="pct" id="ldp">0%</div></div>
 
 <canvas id="c"></canvas>
 <div id="lbls"></div>
 <div id="degs"></div>
 <div class="pin" id="pin"><div class="pin-d"></div><div class="pin-l"></div></div>
+<div class="sun-lbl" id="slbl">☀ Sun</div>
+<div class="earth-lbl" id="elbl">🌍 Earth</div>
 
 <div class="p p-title">
-    <h1>🌑 Lunar South Pole — Water Ice Detection</h1>
-    <div class="sub">ISRO Chandrayaan-2 DFSAR + NASA LRO LOLA/Mini-RF<br>Drag to rotate • Scroll to zoom • Click for point analysis</div>
+    <h1>🌑 Lunar South Pole — Real-Time Orbital View</h1>
+    <div class="sub">ISRO Chandrayaan-2 DFSAR + NASA LRO • Sun & Earth synced to real time<br>Drag to rotate • Scroll to zoom • Click for point analysis</div>
 </div>
 
 <div class="p p-ctrl" id="ctrl">
@@ -96,15 +103,21 @@
     <button class="btn on" id="bGrid">⊞ Lat/Lon Grid</button>
     <button class="btn" id="bRot">↻ Auto-Rotate</button>
     <button class="btn" id="bExag">⛰️ Terrain: 8×</button>
+    <button class="btn" id="bSpeed">⏱ 1× Speed</button>
 </div>
 
 <div class="p p-info">
     <div class="ir"><span class="l">Region</span><span class="v">80°S – 90°S</span></div>
     <div class="ir"><span class="l">Coverage</span><span class="v" id="iCov">—</span></div>
     <div class="ir"><span class="l">Elevation</span><span class="v" id="iElev">—</span></div>
-    <div class="ir"><span class="l">PSR Area</span><span class="v">9,674 km²</span></div>
     <div class="ir"><span class="l">Ice (P>0.5)</span><span class="v" style="color:#00b4ff">3,531 km²</span></div>
     <div class="ir"><span class="l">Model</span><span class="v">XGBoost AUC 0.76</span></div>
+    <div class="ir-sep"></div>
+    <div class="ir"><span class="l">☀ Sun Azimuth</span><span class="v" id="iSunAz">—</span></div>
+    <div class="ir"><span class="l">☀ Sun Elevation</span><span class="v" id="iSunEl">—</span></div>
+    <div class="ir"><span class="l">🌙 Lunar Phase</span><span class="v" id="iPhase">—</span></div>
+    <div class="ir"><span class="l">🌍 Earth Dir.</span><span class="v" id="iEarth">—</span></div>
+    <div class="ir"><span class="l">🕐 UTC</span><span class="v" id="iUTC">—</span></div>
 </div>
 
 <div class="p p-px" id="ppx">
@@ -113,9 +126,11 @@
 </div>
 
 <div class="p p-legend">
-    <div class="leg-item"><div class="leg-swatch" style="background:#888"></div>Sunlit Surface</div>
-    <div class="leg-item"><div class="leg-swatch" style="background:#111"></div>Permanent Shadow</div>
-    <div class="leg-item"><div class="leg-swatch leg-grad"></div>Ice Probability (low → high)</div>
+    <div class="leg-item"><div class="leg-swatch" style="background:#888"></div>Sunlit</div>
+    <div class="leg-item"><div class="leg-swatch" style="background:#111"></div>Perm. Shadow</div>
+    <div class="leg-item"><div class="leg-swatch leg-grad"></div>Ice (low→high)</div>
+    <div class="leg-item"><div class="leg-swatch" style="background:radial-gradient(circle,#fff8a0,#ff8800)"></div>Sun</div>
+    <div class="leg-item"><div class="leg-swatch" style="background:radial-gradient(circle,#88ccff,#2244aa)"></div>Earth</div>
 </div>
 
 <div class="p p-slider">
@@ -135,52 +150,139 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { Lensflare, LensflareElement } from 'three/addons/objects/Lensflare.js';
 
-const P='assets/3d/',R=300,CAP=12*Math.PI/180,SEG=512;
-let renderer,scene,camera,controls,composer,bloomPass;
-let cap,capGeo,gridGrp,degLabels=[];
-let satellite;
-let tex={},meta={},hData,dCtx;
-let exag=8,loaded=0;
-const TOTAL=8,rc=new THREE.Raycaster(),ms=new THREE.Vector2();
-let pinW=null;
+// ═══════════════════════════════════════════════════════════════════════════════
+// ASTRONOMICAL CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════════
+const SYNODIC_PERIOD = 29.53059;    // days — new moon to new moon
+const SIDEREAL_MONTH = 27.321661;   // days — moon rotation period
+const MOON_AXIAL_TILT = 1.5424;     // degrees — tilt to ecliptic
+const MOON_ORBIT_INCL = 5.145;      // degrees — orbit to ecliptic
+// Reference new moon: 2025-01-29 12:36 UTC
+const REF_NEW_MOON = new Date('2025-01-29T12:36:00Z').getTime();
 
-function init(){
-    const cv=document.getElementById('c');
-    renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
-    renderer.setSize(innerWidth,innerHeight);
-    renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-    renderer.toneMapping=THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure=1.15;
+// Scene constants
+const P = 'assets/3d/';
+const R = 300;                      // Moon radius in scene units
+const CAP = 12 * Math.PI / 180;    // South pole cap angular size
+const SEG = 512;                    // Mesh resolution
+const EARTH_DIST = 1200;           // Earth distance in scene units (scaled)
+const SUN_DIST = 3000;             // Sun distance in scene units
 
-    scene=new THREE.Scene();
-    scene.background=new THREE.Color(0x010108);
+let renderer, scene, camera, controls, composer, bloomPass;
+let cap, capGeo, gridGrp, degLabels = [];
+let sunLight, sunMesh, earthMesh, satellite, moonBody;
+let tex = {}, meta = {}, hData, dCtx;
+let exag = 8, loaded = 0, timeScale = 1;
+const TOTAL = 9, rc = new THREE.Raycaster(), ms = new THREE.Vector2();
+let pinW = null;
 
-    camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.01,8000);
-    camera.position.set(0,R+280,120);
-    camera.up.set(0,1,0);
+// ═══════════════════════════════════════════════════════════════════════════════
+// ORBITAL MECHANICS — real-time Sun & Earth positions
+// ═══════════════════════════════════════════════════════════════════════════════
+function getLunarPhase(date) {
+    const ms = date.getTime() - REF_NEW_MOON;
+    const days = ms / 86400000;
+    const phase = ((days % SYNODIC_PERIOD) + SYNODIC_PERIOD) % SYNODIC_PERIOD;
+    return phase / SYNODIC_PERIOD; // 0 = new moon, 0.5 = full moon
+}
 
-    controls=new OrbitControls(camera,cv);
-    controls.enableDamping=true;
-    controls.dampingFactor=0.06;
-    controls.minDistance=1;          // can zoom right onto the surface
-    controls.maxDistance=R+900;
-    controls.target.set(0,R,0);
-    controls.zoomSpeed=1.2;
+function getPhaseName(p) {
+    if (p < 0.025) return 'New Moon 🌑';
+    if (p < 0.22) return 'Waxing Crescent 🌒';
+    if (p < 0.28) return 'First Quarter 🌓';
+    if (p < 0.47) return 'Waxing Gibbous 🌔';
+    if (p < 0.53) return 'Full Moon 🌕';
+    if (p < 0.72) return 'Waning Gibbous 🌖';
+    if (p < 0.78) return 'Last Quarter 🌗';
+    if (p < 0.975) return 'Waning Crescent 🌘';
+    return 'New Moon 🌑';
+}
 
-    // Harsh sunlight from low angle (like real lunar conditions)
-    scene.add(new THREE.AmbientLight(0x1a1a2a,0.15));
-    const sun=new THREE.DirectionalLight(0xfff5e0,2.2);
-    sun.position.set(500,100,200);
-    scene.add(sun);
-    const fill=new THREE.DirectionalLight(0x223355,0.15);
-    fill.position.set(-300,-200,100);
-    scene.add(fill);
+function getSunPosition(date) {
+    // Sun's direction relative to moon (in moon-centric frame)
+    // Phase 0 (new moon): Sun is in same direction as Earth from Moon
+    // Phase 0.5 (full moon): Sun is opposite Earth from Moon
+    const phase = getLunarPhase(date);
+    const sunAngle = phase * 2 * Math.PI; // 0 at new moon
 
-    composer=new EffectComposer(renderer);
-    composer.addPass(new RenderPass(scene,camera));
-    bloomPass=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.35,0.3,0.9);
-    bloomPass.enabled=false;
+    // Sub-solar latitude oscillates with axial tilt (~±1.54°)
+    const days = (date.getTime() - REF_NEW_MOON) / 86400000;
+    const tiltPhase = (days / SIDEREAL_MONTH) * 2 * Math.PI;
+    const subSolarLat = MOON_AXIAL_TILT * Math.sin(tiltPhase) * Math.PI / 180;
+
+    return {
+        angle: sunAngle,
+        lat: subSolarLat,
+        phase: phase,
+        // Sun elevation at south pole (always very low, ~0-1.54°)
+        poleElevation: MOON_AXIAL_TILT * Math.sin(tiltPhase),
+        // Azimuth at south pole = sun angle
+        poleAzimuth: (sunAngle * 180 / Math.PI) % 360
+    };
+}
+
+function getEarthPosition(date) {
+    // Moon is tidally locked — Earth is always roughly at the same spot
+    // But libration causes slight wobbling (±6° lon, ±7° lat)
+    const days = (date.getTime() - REF_NEW_MOON) / 86400000;
+
+    // Longitude libration (optical, ~±7.9°)
+    const libLon = 7.9 * Math.sin(days / SIDEREAL_MONTH * 2 * Math.PI) * Math.PI / 180;
+    // Latitude libration (~±6.7°)
+    const libLat = 6.7 * Math.sin(days / 27.2 * 2 * Math.PI) * Math.PI / 180;
+
+    return { lon: libLon, lat: libLat };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INITIALIZATION
+// ═══════════════════════════════════════════════════════════════════════════════
+function init() {
+    const cv = document.getElementById('c');
+    renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x010108);
+
+    camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.01, 20000);
+    camera.position.set(0, R + 280, 120);
+    camera.up.set(0, 1, 0);
+
+    controls = new OrbitControls(camera, cv);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance = 1;
+    controls.maxDistance = 5000;
+    controls.target.set(0, R, 0);
+    controls.zoomSpeed = 1.2;
+
+    // Ambient — very dim (space is dark)
+    scene.add(new THREE.AmbientLight(0x111122, 0.08));
+
+    // Sun light — positioned by orbital calculation
+    sunLight = new THREE.DirectionalLight(0xfff8e0, 2.5);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    scene.add(sunLight);
+
+    // Earthshine — subtle blue fill from Earth
+    const earthshine = new THREE.DirectionalLight(0x4488cc, 0.05);
+    earthshine.position.set(0, 0, -EARTH_DIST);
+    scene.add(earthshine);
+
+    // Bloom
+    composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.35, 0.3, 0.9);
+    bloomPass.enabled = false;
     composer.addPass(bloomPass);
 
     makeStars();
@@ -188,239 +290,339 @@ function init(){
     bindUI();
     tick();
 
-    addEventListener('resize',()=>{
-        camera.aspect=innerWidth/innerHeight;
+    addEventListener('resize', () => {
+        camera.aspect = innerWidth / innerHeight;
         camera.updateProjectionMatrix();
-        renderer.setSize(innerWidth,innerHeight);
-        composer.setSize(innerWidth,innerHeight);
+        renderer.setSize(innerWidth, innerHeight);
+        composer.setSize(innerWidth, innerHeight);
     });
 }
 
-function makeStars(){
-    const n=12000,pos=new Float32Array(n*3);
-    for(let i=0;i<n;i++){
-        const th=Math.random()*Math.PI*2,ph=Math.acos(Math.random()*2-1),r=1500+Math.random()*2000;
-        pos[i*3]=r*Math.sin(ph)*Math.cos(th);
-        pos[i*3+1]=r*Math.sin(ph)*Math.sin(th);
-        pos[i*3+2]=r*Math.cos(ph);
+// ── Stars ──
+function makeStars() {
+    const n = 15000, pos = new Float32Array(n * 3), cols = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+        const th = Math.random() * Math.PI * 2, ph = Math.acos(Math.random() * 2 - 1);
+        const r = 6000 + Math.random() * 4000;
+        pos[i*3] = r * Math.sin(ph) * Math.cos(th);
+        pos[i*3+1] = r * Math.sin(ph) * Math.sin(th);
+        pos[i*3+2] = r * Math.cos(ph);
+        // Slight color variation
+        const t = Math.random();
+        cols[i*3] = 0.8 + t * 0.2;
+        cols[i*3+1] = 0.8 + (1-t) * 0.2;
+        cols[i*3+2] = 0.9 + Math.random() * 0.1;
     }
-    const g=new THREE.BufferGeometry();
-    g.setAttribute('position',new THREE.BufferAttribute(pos,3));
-    scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xffffff,size:0.5,transparent:true,opacity:0.65})));
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    scene.add(new THREE.Points(g, new THREE.PointsMaterial({
+        size: 0.6, transparent: true, opacity: 0.7, vertexColors: true
+    })));
 }
 
-function loadAll(){
-    const tl=new THREE.TextureLoader();
-    const bump=()=>{loaded++;document.getElementById('ldp').textContent=Math.round(loaded/TOTAL*100)+'%';if(loaded>=TOTAL)build();};
+// ── Loading ──
+function loadAll() {
+    const tl = new THREE.TextureLoader();
+    const bump = () => {
+        loaded++;
+        document.getElementById('ldp').textContent = Math.round(loaded / TOTAL * 100) + '%';
+        if (loaded >= TOTAL) build();
+    };
 
-    const img=new Image();img.crossOrigin='anonymous';
-    img.onload=()=>{const cv=document.createElement('canvas');cv.width=img.width;cv.height=img.height;const cx=cv.getContext('2d');cx.drawImage(img,0,0);hData=cx.getImageData(0,0,cv.width,cv.height).data;bump();};
-    img.src=P+'heightmap_8bit.png';
+    // Heightmap
+    const img = new Image(); img.crossOrigin = 'anonymous';
+    img.onload = () => {
+        const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+        const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0);
+        hData = cx.getImageData(0, 0, cv.width, cv.height).data; bump();
+    };
+    img.src = P + 'heightmap_8bit.png';
 
-    const di=new Image();di.crossOrigin='anonymous';
-    di.onload=()=>{const cv=document.createElement('canvas');cv.width=di.width;cv.height=di.height;dCtx=cv.getContext('2d');dCtx.drawImage(di,0,0);bump();};
-    di.src=P+'data_texture.png';
+    // Data texture
+    const di = new Image(); di.crossOrigin = 'anonymous';
+    di.onload = () => {
+        const cv = document.createElement('canvas'); cv.width = di.width; cv.height = di.height;
+        dCtx = cv.getContext('2d'); dCtx.drawImage(di, 0, 0); bump();
+    };
+    di.src = P + 'data_texture.png';
 
-    ['realistic','ice_glow','cpr'].forEach(k=>{
-        const f=k==='realistic'?'texture_realistic.png':k==='ice_glow'?'texture_ice_glow.png':'texture_cpr.png';
-        tl.load(P+f,t=>{t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=renderer.capabilities.getMaxAnisotropy();tex[k]=t;bump();});
+    // Visual textures
+    ['realistic','ice_glow','cpr'].forEach(k => {
+        const f = k === 'realistic' ? 'texture_realistic.png' : k === 'ice_glow' ? 'texture_ice_glow.png' : 'texture_cpr.png';
+        tl.load(P + f, t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); tex[k] = t; bump(); });
     });
-    tl.load(P+'normalmap.png',t=>{t.colorSpace=THREE.LinearSRGBColorSpace;tex.normal=t;bump();});
-    tl.load(P+'global_moon.png',t=>{t.colorSpace=THREE.SRGBColorSpace;tex.global=t;bump();});
-    fetch(P+'terrain_meta.json').then(r=>r.json()).then(d=>{meta=d;bump();}).catch(bump);
+    tl.load(P + 'normalmap.png', t => { t.colorSpace = THREE.LinearSRGBColorSpace; tex.normal = t; bump(); });
+    tl.load(P + 'global_moon.png', t => { t.colorSpace = THREE.SRGBColorSpace; tex.global = t; bump(); });
+    tl.load(P + 'earth.jpg', t => { t.colorSpace = THREE.SRGBColorSpace; tex.earth = t; bump(); });
+    fetch(P + 'terrain_meta.json').then(r => r.json()).then(d => { meta = d; bump(); }).catch(bump);
 }
 
-function build(){
-    // Moon body
-    const moonBody = new THREE.Mesh(
-        new THREE.SphereGeometry(R-0.5,64,64),
-        new THREE.MeshStandardMaterial({map:tex.global,roughness:0.95,metalness:0})
+// ═══════════════════════════════════════════════════════════════════════════════
+// BUILD SCENE
+// ═══════════════════════════════════════════════════════════════════════════════
+function build() {
+    // 1. Moon body (global texture)
+    moonBody = new THREE.Mesh(
+        new THREE.SphereGeometry(R - 0.5, 64, 64),
+        new THREE.MeshStandardMaterial({ map: tex.global, roughness: 0.95, metalness: 0 })
     );
-    moonBody.rotation.x = Math.PI; // Flip so South pole is at +Y, matching the cap
+    moonBody.rotation.x = Math.PI;
+    moonBody.receiveShadow = true;
     scene.add(moonBody);
 
-    // South pole cap (now rendered on top / outside)
+    // 2. South pole detail cap
     buildCap();
+
+    // 3. Grid & labels
     buildGrid();
     buildLabels();
+
+    // 4. Sun (visible disk + lens flare)
+    buildSun();
+
+    // 5. Earth
+    buildEarth();
+
+    // 6. Satellite
     buildSatellite();
 
-    document.getElementById('iCov').textContent=`${meta.total_width_km||320}×${meta.total_height_km||306} km`;
-    document.getElementById('iElev').textContent=`${Math.round(meta.dem_min_m||0)} → ${Math.round(meta.dem_max_m||0)} m`;
+    // HUD
+    document.getElementById('iCov').textContent = `${meta.total_width_km||320}×${meta.total_height_km||306} km`;
+    document.getElementById('iElev').textContent = `${Math.round(meta.dem_min_m||0)} → ${Math.round(meta.dem_max_m||0)} m`;
     document.getElementById('ld').classList.add('done');
 }
 
+function buildSun() {
+    // Glowing sun sphere
+    const sunGeo = new THREE.SphereGeometry(40, 32, 32);
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xfff8d0 });
+    sunMesh = new THREE.Mesh(sunGeo, sunMat);
+
+    // Sun glow (additive billboard)
+    const glowGeo = new THREE.PlaneGeometry(300, 300);
+    const glowMat = new THREE.MeshBasicMaterial({
+        color: 0xffdd44,
+        transparent: true,
+        opacity: 0.15,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+    });
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+    sunMesh.add(glow);
+
+    // Second larger glow
+    const glow2 = new THREE.Mesh(
+        new THREE.PlaneGeometry(500, 500),
+        new THREE.MeshBasicMaterial({
+            color: 0xff8800,
+            transparent: true,
+            opacity: 0.05,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide
+        })
+    );
+    sunMesh.add(glow2);
+
+    // Sun rays (rotating planes)
+    for (let i = 0; i < 4; i++) {
+        const ray = new THREE.Mesh(
+            new THREE.PlaneGeometry(600, 15),
+            new THREE.MeshBasicMaterial({
+                color: 0xffcc44,
+                transparent: true,
+                opacity: 0.04,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                side: THREE.DoubleSide
+            })
+        );
+        ray.rotation.z = (i / 4) * Math.PI;
+        ray.name = 'ray';
+        sunMesh.add(ray);
+    }
+
+    scene.add(sunMesh);
+}
+
+function buildEarth() {
+    const earthGeo = new THREE.SphereGeometry(25, 48, 48); // ~3.67x moon radius, scaled
+    const earthMat = new THREE.MeshStandardMaterial({
+        map: tex.earth,
+        roughness: 0.7,
+        metalness: 0.1
+    });
+    earthMesh = new THREE.Mesh(earthGeo, earthMat);
+
+    // Atmosphere glow
+    const atmoGeo = new THREE.SphereGeometry(26.5, 48, 48);
+    const atmoMat = new THREE.MeshBasicMaterial({
+        color: 0x4488ff,
+        transparent: true,
+        opacity: 0.12,
+        blending: THREE.AdditiveBlending,
+        side: THREE.BackSide,
+        depthWrite: false
+    });
+    earthMesh.add(new THREE.Mesh(atmoGeo, atmoMat));
+
+    scene.add(earthMesh);
+}
+
 function buildSatellite() {
-    // Add a tiny orbiting satellite (Chandrayaan-2 representation)
     const satGeo = new THREE.BoxGeometry(1.5, 0.5, 0.5);
     const satMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.8, roughness: 0.2 });
     satellite = new THREE.Mesh(satGeo, satMat);
-    
-    // Solar panels
     const panelGeo = new THREE.PlaneGeometry(3, 1);
     const panelMat = new THREE.MeshStandardMaterial({ color: 0x112255, metalness: 0.9, roughness: 0.1, side: THREE.DoubleSide });
-    const panel1 = new THREE.Mesh(panelGeo, panelMat);
-    panel1.position.set(0, 0, 0.8);
-    const panel2 = new THREE.Mesh(panelGeo, panelMat);
-    panel2.position.set(0, 0, -0.8);
-    satellite.add(panel1, panel2);
-    
+    satellite.add(new THREE.Mesh(panelGeo, panelMat).translateZ(0.8));
+    satellite.add(new THREE.Mesh(panelGeo, panelMat).translateZ(-0.8));
     scene.add(satellite);
 }
 
-function buildCap(){
-    const sz=meta.grid_size||2048;
-    const positions=[],normals=[],uvs=[],indices=[];
+function buildCap() {
+    const sz = meta.grid_size || 2048;
+    const positions = [], normals = [], uvs = [], indices = [];
 
-    for(let iy=0;iy<=SEG;iy++){
-        for(let ix=0;ix<=SEG;ix++){
-            const u=ix/SEG,v=iy/SEG;
-            const dx=u-0.5,dy=v-0.5;
-            const dist=Math.sqrt(dx*dx+dy*dy)*2;
-            const angle=Math.atan2(dy,dx);
-            const colat=dist*CAP;
-            const sinC=Math.sin(colat),cosC=Math.cos(colat);
+    for (let iy = 0; iy <= SEG; iy++) {
+        for (let ix = 0; ix <= SEG; ix++) {
+            const u = ix / SEG, v = iy / SEG;
+            const dx = u - 0.5, dy = v - 0.5;
+            const dist = Math.sqrt(dx*dx + dy*dy) * 2;
+            const angle = Math.atan2(dy, dx);
+            const colat = dist * CAP;
+            const sinC = Math.sin(colat), cosC = Math.cos(colat);
 
-            let r=R;
-            if(dist<0.5&&hData){
-                const hx=Math.min(Math.floor(u*(sz-1)),sz-1);
-                const hy=Math.min(Math.floor(v*(sz-1)),sz-1);
-                r+=((hData[(hy*sz+hx)*4]||0)/255)*exag*0.15;
+            let r = R;
+            if (dist < 0.5 && hData) {
+                const hx = Math.min(Math.floor(u*(sz-1)), sz-1);
+                const hy = Math.min(Math.floor(v*(sz-1)), sz-1);
+                r += ((hData[(hy*sz+hx)*4]||0)/255) * exag * 0.15;
             }
 
-            const px=r*sinC*Math.cos(angle);
-            const pz=r*sinC*Math.sin(angle);
-            const py=r*cosC; // flipped to +y (outside)
-            positions.push(px,py,pz);
-            const len=Math.sqrt(px*px+py*py+pz*pz);
-            normals.push(px/len,py/len,pz/len);
-            uvs.push(u,v);
+            const px = r*sinC*Math.cos(angle), pz = r*sinC*Math.sin(angle), py = r*cosC;
+            positions.push(px, py, pz);
+            const len = Math.sqrt(px*px+py*py+pz*pz);
+            normals.push(px/len, py/len, pz/len);
+            uvs.push(u, v);
         }
     }
-    for(let iy=0;iy<SEG;iy++)for(let ix=0;ix<SEG;ix++){
-        const a=iy*(SEG+1)+ix,b=a+1,c=a+(SEG+1),d=c+1;
-        indices.push(a,c,b,b,c,d);
+    for (let iy = 0; iy < SEG; iy++) for (let ix = 0; ix < SEG; ix++) {
+        const a = iy*(SEG+1)+ix, b = a+1, c = a+(SEG+1), d = c+1;
+        indices.push(a, c, b, b, c, d);
     }
 
-    capGeo=new THREE.BufferGeometry();
-    capGeo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
-    capGeo.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
-    capGeo.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
+    capGeo = new THREE.BufferGeometry();
+    capGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    capGeo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    capGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     capGeo.setIndex(indices);
     capGeo.computeVertexNormals();
 
-    cap=new THREE.Mesh(capGeo,new THREE.MeshStandardMaterial({
-        map:tex.realistic,normalMap:tex.normal||null,
-        normalScale:new THREE.Vector2(1.5,1.5),
-        roughness:0.88,metalness:0.02,side:THREE.FrontSide
+    cap = new THREE.Mesh(capGeo, new THREE.MeshStandardMaterial({
+        map: tex.realistic, normalMap: tex.normal || null,
+        normalScale: new THREE.Vector2(1.5, 1.5),
+        roughness: 0.88, metalness: 0.02, side: THREE.FrontSide
     }));
+    cap.receiveShadow = true;
     scene.add(cap);
 }
 
-function rebuildH(){
-    if(!capGeo||!hData)return;
-    const pos=capGeo.attributes.position,sz=meta.grid_size||2048;
-    for(let iy=0;iy<=SEG;iy++)for(let ix=0;ix<=SEG;ix++){
-        const i=iy*(SEG+1)+ix,u=ix/SEG,v=iy/SEG;
-        const dx=u-0.5,dy=v-0.5,dist=Math.sqrt(dx*dx+dy*dy)*2;
-        const angle=Math.atan2(dy,dx),colat=dist*CAP;
-        let r=R;
-        if(dist<0.5){const hx=Math.min(Math.floor(u*(sz-1)),sz-1),hy=Math.min(Math.floor(v*(sz-1)),sz-1);r+=((hData[(hy*sz+hx)*4]||0)/255)*exag*0.15;}
-        pos.setXYZ(i,r*Math.sin(colat)*Math.cos(angle),r*Math.cos(colat),r*Math.sin(colat)*Math.sin(angle));
+function rebuildH() {
+    if (!capGeo || !hData) return;
+    const pos = capGeo.attributes.position, sz = meta.grid_size || 2048;
+    for (let iy = 0; iy <= SEG; iy++) for (let ix = 0; ix <= SEG; ix++) {
+        const i = iy*(SEG+1)+ix, u = ix/SEG, v = iy/SEG;
+        const dx = u-0.5, dy = v-0.5, dist = Math.sqrt(dx*dx+dy*dy)*2;
+        const angle = Math.atan2(dy, dx), colat = dist*CAP;
+        let r = R;
+        if (dist < 0.5) { const hx = Math.min(Math.floor(u*(sz-1)),sz-1), hy = Math.min(Math.floor(v*(sz-1)),sz-1); r += ((hData[(hy*sz+hx)*4]||0)/255)*exag*0.15; }
+        pos.setXYZ(i, r*Math.sin(colat)*Math.cos(angle), r*Math.cos(colat), r*Math.sin(colat)*Math.sin(angle));
     }
-    pos.needsUpdate=true;capGeo.computeVertexNormals();
+    pos.needsUpdate = true; capGeo.computeVertexNormals();
 }
 
-function buildGrid(){
-    gridGrp=new THREE.Group();
-    // Latitude circles
-    [82,84,86,88].forEach(lat=>{
-        const colat=(90-lat)*Math.PI/180,r=(R+0.3)*Math.sin(colat),y=(R+0.3)*Math.cos(colat);
-        const pts=[];for(let a=0;a<=360;a+=1.5)pts.push(new THREE.Vector3(r*Math.cos(a*Math.PI/180),y,r*Math.sin(a*Math.PI/180)));
-        gridGrp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x4466aa,transparent:true,opacity:0.3})));
+function buildGrid() {
+    gridGrp = new THREE.Group();
+    [82,84,86,88].forEach(lat => {
+        const colat = (90-lat)*Math.PI/180, r = (R+0.3)*Math.sin(colat), y = (R+0.3)*Math.cos(colat);
+        const pts = []; for (let a = 0; a <= 360; a += 1.5) pts.push(new THREE.Vector3(r*Math.cos(a*Math.PI/180), y, r*Math.sin(a*Math.PI/180)));
+        gridGrp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x4466aa, transparent: true, opacity: 0.3 })));
     });
-    // Longitude lines
-    for(let lon=0;lon<360;lon+=30){
-        const pts=[],rad=lon*Math.PI/180;
-        for(let lat=78;lat<=90;lat+=0.3){
-            const colat=(90-lat)*Math.PI/180,r=(R+0.3)*Math.sin(colat),y=(R+0.3)*Math.cos(colat);
-            pts.push(new THREE.Vector3(r*Math.cos(rad),y,r*Math.sin(rad)));
+    for (let lon = 0; lon < 360; lon += 30) {
+        const pts = [], rad = lon*Math.PI/180;
+        for (let lat = 78; lat <= 90; lat += 0.3) {
+            const colat = (90-lat)*Math.PI/180, r = (R+0.3)*Math.sin(colat), y = (R+0.3)*Math.cos(colat);
+            pts.push(new THREE.Vector3(r*Math.cos(rad), y, r*Math.sin(rad)));
         }
-        gridGrp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x4466aa,transparent:true,opacity:0.2})));
+        gridGrp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x4466aa, transparent: true, opacity: 0.2 })));
     }
     scene.add(gridGrp);
 
-    // Degree labels at grid intersections
-    const container=document.getElementById('degs');
-    [82,84,86,88].forEach(lat=>{
-        [0,90,180,270].forEach(lon=>{
-            const el=document.createElement('div');
-            el.className='deg-lbl';
-            el.textContent=`${lat}°S`;
-            el.dataset.lat=lat;el.dataset.lon=lon;
-            container.appendChild(el);
-            degLabels.push(el);
+    const container = document.getElementById('degs');
+    [82,84,86,88].forEach(lat => {
+        [0,90,180,270].forEach(lon => {
+            const el = document.createElement('div'); el.className = 'deg-lbl';
+            el.textContent = `${lat}°S`; el.dataset.lat = lat; el.dataset.lon = lon;
+            container.appendChild(el); degLabels.push(el);
         });
     });
-    // Longitude labels
-    for(let lon=0;lon<360;lon+=30){
-        const el=document.createElement('div');
-        el.className='deg-lbl';
-        el.textContent=`${lon}°`;
-        el.dataset.lat=80;el.dataset.lon=lon;
-        container.appendChild(el);
-        degLabels.push(el);
+    for (let lon = 0; lon < 360; lon += 30) {
+        const el = document.createElement('div'); el.className = 'deg-lbl';
+        el.textContent = `${lon}°`; el.dataset.lat = 80; el.dataset.lon = lon;
+        container.appendChild(el); degLabels.push(el);
     }
 }
 
-function latLonToWorld(lat,lon){
-    const colat=(90-lat)*Math.PI/180,rad=lon*Math.PI/180;
-    const r=R+3;
-    return new THREE.Vector3(r*Math.sin(colat)*Math.cos(rad),r*Math.cos(colat),r*Math.sin(colat)*Math.sin(rad));
+function latLonToWorld(lat, lon) {
+    const colat = (90-lat)*Math.PI/180, rad = lon*Math.PI/180, r = R+3;
+    return new THREE.Vector3(r*Math.sin(colat)*Math.cos(rad), r*Math.cos(colat), r*Math.sin(colat)*Math.sin(rad));
 }
 
-function buildLabels(){
-    const container=document.getElementById('lbls');
-    (meta.craters||[]).forEach(c=>{
-        const el=document.createElement('div');
-        el.className='clbl';
-        el.innerHTML=`<div class="clbl-name">${c.name}</div><div class="clbl-sub">${c.radius_km} km ⌀ ${c.depth_km?'• '+c.depth_km+' km deep':''}</div>`;
-        el.dataset.u=(c.px/(meta.grid_size||2048)).toFixed(4);
-        el.dataset.v=(c.py/(meta.grid_size||2048)).toFixed(4);
+function buildLabels() {
+    const container = document.getElementById('lbls');
+    (meta.craters||[]).forEach(c => {
+        const el = document.createElement('div'); el.className = 'clbl';
+        el.innerHTML = `<div class="clbl-name">${c.name}</div><div class="clbl-sub">${c.radius_km} km ⌀ ${c.depth_km ? '• '+c.depth_km+' km deep' : ''}</div>`;
+        el.dataset.u = (c.px/(meta.grid_size||2048)).toFixed(4);
+        el.dataset.v = (c.py/(meta.grid_size||2048)).toFixed(4);
         container.appendChild(el);
     });
 }
 
-function uvToWorld(u,v){
-    const dx=u-0.5,dy=v-0.5,dist=Math.sqrt(dx*dx+dy*dy)*2;
-    const angle=Math.atan2(dy,dx),colat=dist*CAP;
-    return new THREE.Vector3((R+2)*Math.sin(colat)*Math.cos(angle),(R+2)*Math.cos(colat),(R+2)*Math.sin(colat)*Math.sin(angle));
+function uvToWorld(u, v) {
+    const dx = u-0.5, dy = v-0.5, dist = Math.sqrt(dx*dx+dy*dy)*2;
+    const angle = Math.atan2(dy, dx), colat = dist*CAP;
+    return new THREE.Vector3((R+2)*Math.sin(colat)*Math.cos(angle), (R+2)*Math.cos(colat), (R+2)*Math.sin(colat)*Math.sin(angle));
 }
 
-function onClick(e){
-    if(!cap||!dCtx)return;
-    const rect=renderer.domElement.getBoundingClientRect();
-    ms.x=((e.clientX-rect.left)/rect.width)*2-1;
-    ms.y=-((e.clientY-rect.top)/rect.height)*2+1;
-    rc.setFromCamera(ms,camera);
-    const hits=rc.intersectObject(cap);
-    if(!hits.length)return;
-    const uv=hits[0].uv;if(!uv)return;
-    pinW=hits[0].point.clone();
+// ── Click inspect ──
+function onClick(e) {
+    if (!cap || !dCtx) return;
+    const rect = renderer.domElement.getBoundingClientRect();
+    ms.x = ((e.clientX-rect.left)/rect.width)*2-1;
+    ms.y = -((e.clientY-rect.top)/rect.height)*2+1;
+    rc.setFromCamera(ms, camera);
+    const hits = rc.intersectObject(cap);
+    if (!hits.length) return;
+    const uv = hits[0].uv; if (!uv) return;
+    pinW = hits[0].point.clone();
 
-    const sz=meta.grid_size||2048;
-    const px=Math.floor(uv.x*(sz-1)),py=Math.floor(uv.y*(sz-1));
-    const d=dCtx.getImageData(px,py,1,1).data;
-    const cpr=(d[0]/255)*3,ice=d[1]/255,slp=(d[2]/255)*45,psr=d[3]>128;
-    const hVal=hData?(hData[(py*sz+px)*4]||0)/255:0;
-    const elev=Math.round((meta.dem_min_m||0)+hVal*(meta.dem_range_m||3000));
+    const sz = meta.grid_size||2048;
+    const px = Math.floor(uv.x*(sz-1)), py = Math.floor(uv.y*(sz-1));
+    const d = dCtx.getImageData(px, py, 1, 1).data;
+    const cpr = (d[0]/255)*3, ice = d[1]/255, slp = (d[2]/255)*45, psr = d[3]>128;
+    const hVal = hData ? (hData[(py*sz+px)*4]||0)/255 : 0;
+    const elev = Math.round((meta.dem_min_m||0) + hVal*(meta.dem_range_m||3000));
 
-    const ipct=(ice*100).toFixed(1);
-    const ib=ice>0.5?`<span class="bg bg-ice">ICE LIKELY</span>`:ice>0.2?`<span class="bg bg-ice" style="opacity:.5">Possible</span>`:`<span class="bg bg-no">Unlikely</span>`;
-    const pb=psr?`<span class="bg bg-psr">Perm. Shadow</span>`:`<span class="bg bg-sun">Sunlit</span>`;
-    const sb=slp<15?`<span class="bg bg-ok">Safe</span>`:slp<25?`<span class="bg bg-w">Caution</span>`:`<span class="bg bg-d">Steep</span>`;
+    const ipct = (ice*100).toFixed(1);
+    const ib = ice>0.5 ? `<span class="bg bg-ice">ICE LIKELY</span>` : ice>0.2 ? `<span class="bg bg-ice" style="opacity:.5">Possible</span>` : `<span class="bg bg-no">Unlikely</span>`;
+    const pb = psr ? `<span class="bg bg-psr">Perm. Shadow</span>` : `<span class="bg bg-sun">Sunlit</span>`;
+    const sb = slp<15 ? `<span class="bg bg-ok">Safe</span>` : slp<25 ? `<span class="bg bg-w">Caution</span>` : `<span class="bg bg-d">Steep</span>`;
 
-    document.getElementById('pxb').innerHTML=`
+    document.getElementById('pxb').innerHTML = `
         <div class="px-r"><span class="l">Ice Probability</span><span class="v">${ipct}% ${ib}</span></div>
         <div class="bar"><div class="bar-f" style="width:${ipct}%;background:linear-gradient(90deg,#002255,#00aaff)"></div></div>
         <div class="px-r" style="margin-top:8px"><span class="l">CPR</span><span class="v">${cpr.toFixed(3)} ${cpr>1?'<span class="bg bg-ice" style="font-size:9px">Anomaly</span>':''}</span></div>
@@ -433,74 +635,170 @@ function onClick(e){
     document.getElementById('ppx').classList.add('show');
 }
 
-function bindUI(){
-    const cv=document.getElementById('c');
-    let md={x:0,y:0};
-    cv.addEventListener('mousedown',e=>{md={x:e.clientX,y:e.clientY}});
-    cv.addEventListener('mouseup',e=>{if(Math.abs(e.clientX-md.x)<4&&Math.abs(e.clientY-md.y)<4)onClick(e);});
+// ── UI ──
+function bindUI() {
+    const cv = document.getElementById('c');
+    let md = {x:0,y:0};
+    cv.addEventListener('mousedown', e => { md = {x:e.clientX, y:e.clientY}; });
+    cv.addEventListener('mouseup', e => { if (Math.abs(e.clientX-md.x)<4 && Math.abs(e.clientY-md.y)<4) onClick(e); });
 
-    document.getElementById('pxc').onclick=()=>{document.getElementById('ppx').classList.remove('show');pinW=null;document.getElementById('pin').style.opacity='0';};
-    addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('ppx').classList.remove('show');pinW=null;document.getElementById('pin').style.opacity='0';}});
+    document.getElementById('pxc').onclick = () => { document.getElementById('ppx').classList.remove('show'); pinW = null; document.getElementById('pin').style.opacity = '0'; };
+    addEventListener('keydown', e => { if (e.key === 'Escape') { document.getElementById('ppx').classList.remove('show'); pinW = null; document.getElementById('pin').style.opacity = '0'; }});
 
-    document.querySelectorAll('[data-t]').forEach(b=>{
-        b.onclick=()=>{
-            document.querySelectorAll('[data-t]').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('[data-t]').forEach(b => {
+        b.onclick = () => {
+            document.querySelectorAll('[data-t]').forEach(x => x.classList.remove('on'));
             b.classList.add('on');
-            const k=b.dataset.t;
-            if(cap&&tex[k]){cap.material.map=tex[k];cap.material.needsUpdate=true;}
-            bloomPass.enabled=k==='ice_glow';
+            const k = b.dataset.t;
+            if (cap && tex[k]) { cap.material.map = tex[k]; cap.material.needsUpdate = true; }
+            bloomPass.enabled = k === 'ice_glow';
         };
     });
 
-    document.getElementById('bGrid').onclick=function(){this.classList.toggle('on');gridGrp.visible=this.classList.contains('on');document.querySelectorAll('.deg-lbl').forEach(e=>e.style.display=this.classList.contains('on')?'':'none');};
-    document.getElementById('bRot').onclick=function(){controls.autoRotate=!controls.autoRotate;controls.autoRotateSpeed=0.3;this.classList.toggle('on',controls.autoRotate);};
+    document.getElementById('bGrid').onclick = function() {
+        this.classList.toggle('on'); gridGrp.visible = this.classList.contains('on');
+        document.querySelectorAll('.deg-lbl').forEach(e => e.style.display = this.classList.contains('on') ? '' : 'none');
+    };
+    document.getElementById('bRot').onclick = function() {
+        controls.autoRotate = !controls.autoRotate; controls.autoRotateSpeed = 0.3;
+        this.classList.toggle('on', controls.autoRotate);
+    };
 
-    const exagLevels=[1,4,8,15,25];let eIdx=2;
-    document.getElementById('bExag').onclick=function(){eIdx=(eIdx+1)%exagLevels.length;exag=exagLevels[eIdx];this.textContent=`⛰️ Terrain: ${exag}×`;document.getElementById('exag').value=exag;document.getElementById('exv').textContent=exag+'×';rebuildH();};
-    const sl=document.getElementById('exag');
-    sl.oninput=()=>{exag=parseInt(sl.value);document.getElementById('exv').textContent=exag+'×';rebuildH();};
+    const exagLevels = [1,4,8,15,25]; let eIdx = 2;
+    document.getElementById('bExag').onclick = function() {
+        eIdx = (eIdx+1) % exagLevels.length; exag = exagLevels[eIdx];
+        this.textContent = `⛰️ Terrain: ${exag}×`;
+        document.getElementById('exag').value = exag;
+        document.getElementById('exv').textContent = exag+'×';
+        rebuildH();
+    };
+    const sl = document.getElementById('exag');
+    sl.oninput = () => { exag = parseInt(sl.value); document.getElementById('exv').textContent = exag+'×'; rebuildH(); };
+
+    // Time scale
+    const speeds = [1, 100, 1000, 10000, 86400];
+    const speedNames = ['1×', '100×', '1,000×', '10,000×', '1 day/s'];
+    let sIdx = 0;
+    document.getElementById('bSpeed').onclick = function() {
+        sIdx = (sIdx+1) % speeds.length; timeScale = speeds[sIdx];
+        this.textContent = `⏱ ${speedNames[sIdx]} Speed`;
+        this.classList.toggle('on', sIdx > 0);
+    };
 }
 
-function tick(){
+// ═══════════════════════════════════════════════════════════════════════════════
+// ANIMATION LOOP
+// ═══════════════════════════════════════════════════════════════════════════════
+let simTime = Date.now();
+
+function tick() {
     requestAnimationFrame(tick);
+
+    // Advance simulation time
+    simTime += 16.67 * timeScale; // ~60fps × scale
+    const simDate = new Date(simTime);
+
     controls.update();
 
-    if(pinW){const p=pinW.clone().project(camera);if(p.z<1){const pin=document.getElementById('pin');pin.style.left=((p.x*.5+.5)*innerWidth)+'px';pin.style.top=((-p.y*.5+.5)*innerHeight)+'px';pin.style.opacity='1';}}
+    // ── Update orbital positions ──
+    const sunInfo = getSunPosition(simDate);
+    const earthInfo = getEarthPosition(simDate);
 
-    // Crater labels
-    document.querySelectorAll('.clbl').forEach(el=>{
-        const wp=uvToWorld(parseFloat(el.dataset.u),parseFloat(el.dataset.v)).project(camera);
-        if(wp.z>1){el.style.display='none';return;}
-        el.style.display='';
-        el.style.left=((wp.x*.5+.5)*innerWidth)+'px';
-        el.style.top=((-wp.y*.5+.5)*innerHeight)+'px';
-        const d=camera.position.distanceTo(uvToWorld(parseFloat(el.dataset.u),parseFloat(el.dataset.v)));
-        el.style.opacity=Math.max(0,Math.min(1,1-(d-250)/500));
+    // Sun position (orbits the moon over synodic period)
+    const sunX = SUN_DIST * Math.cos(sunInfo.angle);
+    const sunZ = SUN_DIST * Math.sin(sunInfo.angle);
+    const sunY = SUN_DIST * Math.sin(sunInfo.lat) * 0.3;
+    sunLight.position.set(sunX, sunY + R, sunZ);
+    sunLight.target.position.set(0, R, 0);
+    if (sunMesh) {
+        sunMesh.position.set(sunX, sunY + R, sunZ);
+        // Make glow planes face camera
+        sunMesh.children.forEach(c => { if (c.name === 'ray') c.rotation.z += 0.001; else c.lookAt(camera.position); });
+    }
+
+    // Earth position (tidally locked direction + libration)
+    if (earthMesh) {
+        const ex = EARTH_DIST * Math.sin(earthInfo.lon);
+        const ez = -EARTH_DIST * Math.cos(earthInfo.lon);
+        const ey = EARTH_DIST * Math.sin(earthInfo.lat);
+        earthMesh.position.set(ex, ey, ez);
+        // Earth rotates on its axis (~360°/24hr)
+        const hrs = (simDate.getUTCHours() + simDate.getUTCMinutes()/60) / 24;
+        earthMesh.rotation.y = hrs * Math.PI * 2;
+        earthMesh.rotation.x = -23.44 * Math.PI / 180; // axial tilt
+    }
+
+    // Satellite orbit
+    if (satellite) {
+        const t = simTime * 0.0005;
+        const orbitR = R + 40;
+        satellite.position.set(orbitR*Math.cos(t), R+10*Math.sin(t*2), orbitR*Math.sin(t));
+        satellite.lookAt(0, R, 0);
+    }
+
+    // ── Update HUD ──
+    const azStr = sunInfo.poleAzimuth.toFixed(1) + '°';
+    const elStr = sunInfo.poleElevation.toFixed(2) + '°';
+    document.getElementById('iSunAz').textContent = azStr;
+    document.getElementById('iSunEl').textContent = elStr;
+    document.getElementById('iPhase').textContent = getPhaseName(sunInfo.phase);
+    document.getElementById('iEarth').textContent = `lib ${(earthInfo.lon*180/Math.PI).toFixed(1)}°`;
+    document.getElementById('iUTC').textContent = simDate.toISOString().slice(0,19).replace('T',' ') + ' UTC';
+
+    // ── Pin ──
+    if (pinW) {
+        const p = pinW.clone().project(camera);
+        if (p.z < 1) {
+            const pin = document.getElementById('pin');
+            pin.style.left = ((p.x*.5+.5)*innerWidth)+'px';
+            pin.style.top = ((-p.y*.5+.5)*innerHeight)+'px';
+            pin.style.opacity = '1';
+        }
+    }
+
+    // ── Labels ──
+    document.querySelectorAll('.clbl').forEach(el => {
+        const wp = uvToWorld(parseFloat(el.dataset.u), parseFloat(el.dataset.v)).project(camera);
+        if (wp.z > 1) { el.style.display = 'none'; return; }
+        el.style.display = '';
+        el.style.left = ((wp.x*.5+.5)*innerWidth)+'px';
+        el.style.top = ((-wp.y*.5+.5)*innerHeight)+'px';
+        const d = camera.position.distanceTo(uvToWorld(parseFloat(el.dataset.u), parseFloat(el.dataset.v)));
+        el.style.opacity = Math.max(0, Math.min(1, 1-(d-250)/500));
     });
 
     // Degree labels
-    degLabels.forEach(el=>{
-        const wp=latLonToWorld(parseFloat(el.dataset.lat),parseFloat(el.dataset.lon)).project(camera);
-        if(wp.z>1){el.style.display='none';return;}
-        el.style.display='';
-        el.style.left=((wp.x*.5+.5)*innerWidth)+'px';
-        el.style.top=((-wp.y*.5+.5)*innerHeight)+'px';
+    degLabels.forEach(el => {
+        const wp = latLonToWorld(parseFloat(el.dataset.lat), parseFloat(el.dataset.lon)).project(camera);
+        if (wp.z > 1) { el.style.display = 'none'; return; }
+        el.style.display = '';
+        el.style.left = ((wp.x*.5+.5)*innerWidth)+'px';
+        el.style.top = ((-wp.y*.5+.5)*innerHeight)+'px';
     });
 
-    // Dynamic near plane: when close to surface, tighten near clip to avoid z-fighting
-    const distToCenter=camera.position.length();
-    const distToSurface=Math.max(distToCenter-R,0.1);
-    if(distToSurface<50){camera.near=0.001;camera.far=2000;}
-    else if(distToSurface<200){camera.near=0.05;camera.far=4000;}
-    else{camera.near=0.5;camera.far=8000;}
-    camera.updateProjectionMatrix();
-
-    if(satellite) {
-        const t = Date.now() * 0.0005;
-        const orbitR = R + 40; // 40 units above surface
-        satellite.position.set(orbitR * Math.cos(t), R + 10 * Math.sin(t*2), orbitR * Math.sin(t));
-        satellite.lookAt(0, R, 0);
+    // Sun label
+    if (sunMesh) {
+        const sp = sunMesh.position.clone().project(camera);
+        const slbl = document.getElementById('slbl');
+        if (sp.z < 1) { slbl.style.left = ((sp.x*.5+.5)*innerWidth)+'px'; slbl.style.top = ((-sp.y*.5+.5)*innerHeight)+'px'; slbl.style.display = ''; }
+        else slbl.style.display = 'none';
     }
+
+    // Earth label
+    if (earthMesh) {
+        const ep = earthMesh.position.clone().project(camera);
+        const elbl = document.getElementById('elbl');
+        if (ep.z < 1) { elbl.style.left = ((ep.x*.5+.5)*innerWidth)+'px'; elbl.style.top = ((-ep.y*.5+.5)*innerHeight)+'px'; elbl.style.display = ''; }
+        else elbl.style.display = 'none';
+    }
+
+    // Dynamic near plane
+    const distToCenter = camera.position.length();
+    const distToSurface = Math.max(distToCenter - R, 0.1);
+    if (distToSurface < 50) { camera.near = 0.001; camera.far = 5000; }
+    else if (distToSurface < 200) { camera.near = 0.05; camera.far = 10000; }
+    else { camera.near = 0.5; camera.far = 20000; }
+    camera.updateProjectionMatrix();
 
     composer.render();
 }
