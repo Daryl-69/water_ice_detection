@@ -142,7 +142,7 @@ let cap,capGeo,gridGrp,degLabels=[];
 let satellite;
 let tex={},meta={},hData,dCtx;
 let exag=8,loaded=0;
-const TOTAL=7,rc=new THREE.Raycaster(),ms=new THREE.Vector2();
+const TOTAL=8,rc=new THREE.Raycaster(),ms=new THREE.Vector2();
 let pinW=null;
 
 function init(){
@@ -226,15 +226,18 @@ function loadAll(){
         tl.load(P+f,t=>{t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=renderer.capabilities.getMaxAnisotropy();tex[k]=t;bump();});
     });
     tl.load(P+'normalmap.png',t=>{t.colorSpace=THREE.LinearSRGBColorSpace;tex.normal=t;bump();});
+    tl.load(P+'global_moon.png',t=>{t.colorSpace=THREE.SRGBColorSpace;tex.global=t;bump();});
     fetch(P+'terrain_meta.json').then(r=>r.json()).then(d=>{meta=d;bump();}).catch(bump);
 }
 
 function build(){
     // Moon body
-    scene.add(new THREE.Mesh(
+    const moonBody = new THREE.Mesh(
         new THREE.SphereGeometry(R-0.5,64,64),
-        new THREE.MeshStandardMaterial({color:0x151518,roughness:0.95,metalness:0})
-    ));
+        new THREE.MeshStandardMaterial({map:tex.global,roughness:0.95,metalness:0})
+    );
+    moonBody.rotation.x = Math.PI; // Flip so South pole is at +Y, matching the cap
+    scene.add(moonBody);
 
     // South pole cap (now rendered on top / outside)
     buildCap();
