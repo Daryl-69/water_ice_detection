@@ -89,7 +89,7 @@
                 }
             };
             img.onerror = () => {
-                console.warn(`Failed to load layer: ${key} (${file})`);
+                // silently skip failed layers
                 state.loaded++;
                 if (state.loaded === state.totalLayers) onAllLoaded();
             };
@@ -98,7 +98,7 @@
     }
 
     function onAllLoaded() {
-        console.log('All layers loaded');
+        // layers ready
         fitToView();
         render();
         loadStats();
@@ -399,7 +399,7 @@
                 renderFeatureBars(data.feature_importance);
             })
             .catch(err => {
-                console.warn('Stats not loaded:', err);
+                // stats unavailable, using defaults
                 // Use defaults
                 renderFeatureBars({
                     CPR: 0.351, TRT: 0.272, VOL: 0.162,

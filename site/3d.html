@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lunar South Pole — Real-Time 3D Orbital Simulation</title>
+    <meta name="description" content="Real-time 3D orbital simulation of the Moon's South Pole with Sun, Earth positioning synced to UTC. Interactive water ice detection overlay.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌑</text></svg>">
+    <meta property="og:title" content="Lunar South Pole — 3D Orbital Simulation">
+    <meta property="og:description" content="Real-time 3D Moon with Sun & Earth synced to UTC. Explore water ice deposits with interactive overlays.">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -79,9 +85,23 @@
         /* Sun label */
         .sun-lbl{position:absolute;pointer-events:none;z-index:30;font-size:9px;font-weight:600;color:rgba(255,220,100,.7);font-family:'JetBrains Mono',monospace;transform:translate(-50%,16px);text-shadow:0 0 10px rgba(255,200,50,.5)}
         .earth-lbl{position:absolute;pointer-events:none;z-index:30;font-size:9px;font-weight:600;color:rgba(100,180,255,.7);font-family:'JetBrains Mono',monospace;transform:translate(-50%,16px);text-shadow:0 0 10px rgba(100,180,255,.5)}
+
+        .mobile-warn{display:none;position:fixed;inset:0;z-index:99999;background:rgba(2,2,8,.97);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;gap:12px}
+        .mobile-warn .emoji{font-size:48px}
+        .mobile-warn h2{font-size:18px;color:#e8eaf0;font-weight:700}
+        .mobile-warn p{font-size:13px;color:#6a6e88;max-width:300px;line-height:1.5}
+        .mobile-warn a{color:#00b4ff;text-decoration:none;font-weight:600;padding:10px 24px;border:1px solid rgba(0,180,255,.3);border-radius:8px;margin-top:8px;display:inline-block;transition:.15s}
+        .mobile-warn a:hover{background:rgba(0,180,255,.1)}
+        @media(max-width:768px){.mobile-warn{display:flex}}
     </style>
 </head>
 <body>
+<div class="mobile-warn">
+    <div class="emoji">🖥️</div>
+    <h2>Desktop Recommended</h2>
+    <p>The 3D orbital simulation requires WebGL and works best on a desktop browser with a mouse for orbit controls.</p>
+    <a href="index.html">← View 2D Dashboard Instead</a>
+</div>
 <div class="loader" id="ld"><div class="ring"></div><p>Rendering lunar terrain & orbital data...</p><div class="pct" id="ldp">0%</div></div>
 
 <canvas id="c"></canvas>
