@@ -1,0 +1,6 @@
+{
+  "outputDirectory": "site",
+  "rewrites": [
+    { "source": "/3d", "destination": "/3d.html" }
+  ]
+}
